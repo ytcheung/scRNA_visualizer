@@ -1,0 +1,73 @@
+---
+title: "Cow RNA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r main}
+#library(dplyr)
+library(Seurat)
+#library(patchwork)
+```
+
+
+```{r}
+cow_data.matrix <- read.table(file="./data/rawCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
+cow_data.metadata <- read.table(file="./data/annotation.txt", na.strings = "-", sep = "\t", header = TRUE)
+```
+
+```{r}
+#seurat<-CreateSeuratObject(raw.data = counts, min.cells = 3, min.genes = 350)
+cow_data <- CreateSeuratObject(counts = cow_data.matrix, meta.data = cow_data.metadata)
+```
+
+```{r}
+VlnPlot(object = cow_data, features = c("nCount_RNA","nFeature_RNA"), group.by = c('Experiment'))
+```
+
+```{r}
+FeatureScatter(cow_data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Days'))
+FeatureScatter(cow_data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Experiment'))
+```
+
+```{r}
+cow_data <- NormalizeData(cow_data)
+cow_data <- FindVariableFeatures(cow_data, selection.method = "vst", nfeatures = 2000)
+```
+
+```{r}
+top10 <- head(VariableFeatures(cow_data), 10)
+plot1 <- VariableFeaturePlot(cow_data)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot1 
+plot2
+```
+
+```{r}
+all.genes <- rownames(cow_data)
+cow_data <- ScaleData(cow_data, features = all.genes)
+```
+
+```{r}
+cow_data <- RunPCA(cow_data, features = VariableFeatures(object = cow_data))
+print(cow_data[["pca"]], dims = 1:5, nfeatures = 5)
+```
+```{r}
+VizDimLoadings(cow_data, dims = 1:2, reduction = "pca")
+DimPlot(cow_data, reduction = "pca", group.by = c('Days'))
+DimPlot(cow_data, reduction = "pca", group.by = c('Experiment'))
+```
+
+```{r}
+DimHeatmap(cow_data, dims = 1:15, cells = 500, balanced = TRUE)
+```
+
+```{r}
+cow_data <- RunUMAP(cow_data, dims = 1:10)
+DimPlot(cow_data, reduction = "umap", group.by = c('Days'))
+DimPlot(cow_data, reduction = "umap", group.by = c('Experiment'))
+```
+
