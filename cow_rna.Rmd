@@ -8,66 +8,160 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r main}
-#library(dplyr)
 library(Seurat)
-#library(patchwork)
+library(scater)
 ```
 
-
+Read data from files
 ```{r}
 cow_data.matrix <- read.table(file="./data/rawCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
 cow_data.metadata <- read.table(file="./data/annotation.txt", na.strings = "-", sep = "\t", header = TRUE)
+cow_data.gene_name <- read.table(file="./data/geneInfo.txt", na.strings = "-", sep = "\t", header = TRUE)
 ```
 
 ```{r}
-#seurat<-CreateSeuratObject(raw.data = counts, min.cells = 3, min.genes = 350)
-cow_data <- CreateSeuratObject(counts = cow_data.matrix, meta.data = cow_data.metadata)
+# temp <- cbind(geneName = cow_data.gene_name$Gene.Name[ match(rownames(cow_data.matrix), cow_data.gene_name$Gene.ID) ], cow_data.matrix)
+# temp$geneName[is.na(temp$geneName)] <- rownames(temp[is.na(temp$geneName),])
+
+# row.names(temp) <- temp$geneName
 ```
 
 ```{r}
-VlnPlot(object = cow_data, features = c("nCount_RNA","nFeature_RNA"), group.by = c('Experiment'))
+cow_data <- CreateSeuratObject(counts = cow_data.matrix, meta.data = cow_data.metadata, min.cells = 3)
 ```
 
 ```{r}
-FeatureScatter(cow_data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Days'))
+mt.genes <- cow_data.gene_name$Gene.ID[grep("^MT-",cow_data.gene_name$Gene.Name)]
+percent.mito <- Matrix::colSums(cow_data[mt.genes, ])/Matrix::colSums(cow_data) * 100
+cow_data <- AddMetaData(cow_data, percent.mito, col.name = "percent.mito")
+
+rb.genes <- cow_data.gene_name$Gene.ID[grep("^RP[SL]",cow_data.gene_name$Gene.Name)]
+percent.ribo <- Matrix::colSums(cow_data[rb.genes, ])/Matrix::colSums(cow_data) * 100
+cow_data <- AddMetaData(cow_data, percent.ribo, col.name = "percent.ribo")
+```
+
+```{r}
+sce <- as.SingleCellExperiment(cow_data)
+sce <- addPerCellQC(sce, subsets = list(mito = mt.genes))
+sce <- addPerFeatureQC(sce)
+
+hist(sce$total/1e6, xlab="Library sizes(millions)", main="",breaks=50, col="grey80", ylab="Number of cells")
+hist(sce$detected, xlab="Number of expressed genes", main="",breaks=50, col="grey80", ylab="Number of cells")
+hist(sce$subsets_mito_percent, xlab="Mito %", main="",breaks=50, col="grey80", ylab="Number of cells")
+```
+QC based on the median absolute deviation (MAD)
+```{r}
+#libsize.drop <- isOutlier(sce$total, nmads=3, type="lower", log=TRUE)
+#feature.drop <- isOutlier(sce$detected, nmads=3, type="lower", log=TRUE)
+#mito.drop <- isOutlier(sce$subsets_mito_percent, nmads=3, type="higher")
+
+#attr(libsize.drop, "thresholds")
+#attr(feature.drop, "thresholds")
+#attr(mito.drop, "thresholds")
+
+#sce_filtered <- sce[,!(libsize.drop | feature.drop | mito.drop)]
+#data.frame(ByLibSize=sum(libsize.drop), ByLibSizeUpper=sum(libsize_u.drop), ByFeature=sum(feature.drop),ByMito=sum(mito.drop), Remaining=ncol(sce_filtered))
+
+reasons <- quickPerCellQC(sce, percent_subsets=c("subsets_mito_percent"), batch=sce@colData@listData[["Experiment"]])
+colSums(as.matrix(reasons))
+
+attr(reasons@listData[["low_lib_size"]], "thresholds")
+attr(reasons@listData[["low_n_features"]], "thresholds")
+attr(reasons@listData[["high_subsets_mito_percent"]], "thresholds")
+
+plotColData(sce, x="Experiment", y="total", colour_by=I(reasons@listData[["low_lib_size"]])) + scale_y_log10()
+plotColData(sce, x="Experiment", y="detected", colour_by=I(reasons@listData[["low_n_features"]])) + scale_y_log10()
+plotColData(sce, x="Experiment", y="percent.mito", colour_by=I(reasons@listData[["high_subsets_mito_percent"]]))
+```
+```{r}
+sce$discard <- reasons$discard
+gridExtra::grid.arrange(
+    plotColData(sce, x="Experiment", y="sum", colour_by="discard")  + 
+        scale_y_log10() + ggtitle("Total count"),
+    plotColData(sce, x="Experiment", y="detected", colour_by="discard")  + 
+        scale_y_log10() + ggtitle("Detected features"),
+    plotColData(sce, x="Experiment", y="subsets_mito_percent", 
+        colour_by="discard") + 
+        ggtitle("Mito percent"),
+    ncol=1
+)
+```
+
+```{r}
+VlnPlot(object = cow_data, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2, log = TRUE)
+VlnPlot(object = cow_data, features = c("percent.mito", "percent.ribo"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2)
+
 FeatureScatter(cow_data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Experiment'))
+FeatureScatter(cow_data, feature1 = "nFeature_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+FeatureScatter(cow_data, feature1 = "nCount_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+```
+```{r}
+sce_filtered <- sce[,!reasons$discard]
+cow_data_filtered <- as.Seurat(sce_filtered) #subset(cow_data, subset = nCount_RNA > 755 & nFeature_RNA > 2699 & percent.mito < 24)
+
+VlnPlot(object = cow_data_filtered, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2, log = TRUE)
+VlnPlot(object = cow_data_filtered, features = c("percent.mito", "percent.ribo"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2)
+
+FeatureScatter(cow_data_filtered, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Experiment'))
+FeatureScatter(cow_data_filtered, feature1 = "nFeature_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+FeatureScatter(cow_data_filtered, feature1 = "nCount_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+```
+```{r}
+#sce_filtered <- computeSumFactors(sce_filtered, sizes=c(20, 40, 60, 80))
+#summary(sizeFactors(sce_filtered))
+#plot(sizeFactors(sce_filtered), sce_filtered$total/1e6, log="xy", ylab="Library size (millions)", xlab="Size factor")
+                    
+#sce_filtered <- logNormCounts(sce_filtered)
+
+#sce_filtered[,sce_filtered@colData@listData[["Experiment"]] == "Exp1"]
+cow_data_filtered <- NormalizeData(cow_data_filtered)
 ```
 
 ```{r}
-cow_data <- NormalizeData(cow_data)
-cow_data <- FindVariableFeatures(cow_data, selection.method = "vst", nfeatures = 2000)
+cow_data_filtered <- FindVariableFeatures(cow_data_filtered, selection.method = "vst", nfeatures = 2000)
+#plotHighestExprs(sce_filtered, exprs_values = "counts")
 ```
 
 ```{r}
-top10 <- head(VariableFeatures(cow_data), 10)
-plot1 <- VariableFeaturePlot(cow_data)
+plotScater(sce, block1 = "Experiment", nfeatures = 1000)
+plotScater(sce, block1 = "Cell_type", nfeatures = 1000)
+```
+
+
+
+
+
+```{r}
+top10 <- head(VariableFeatures(cow_data_filtered), 10)
+plot1 <- VariableFeaturePlot(cow_data_filtered)
 plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
 plot1 
 plot2
 ```
 
 ```{r}
-all.genes <- rownames(cow_data)
-cow_data <- ScaleData(cow_data, features = all.genes)
+all.genes <- rownames(cow_data_filtered)
+cow_data_filtered <- ScaleData(cow_data_filtered, features = all.genes)
 ```
 
 ```{r}
-cow_data <- RunPCA(cow_data, features = VariableFeatures(object = cow_data))
-print(cow_data[["pca"]], dims = 1:5, nfeatures = 5)
-```
-```{r}
-VizDimLoadings(cow_data, dims = 1:2, reduction = "pca")
-DimPlot(cow_data, reduction = "pca", group.by = c('Days'))
-DimPlot(cow_data, reduction = "pca", group.by = c('Experiment'))
+cow_data_filtered <- RunPCA(cow_data_filtered, features = VariableFeatures(object = cow_data_filtered))
+
 ```
 
 ```{r}
-DimHeatmap(cow_data, dims = 1:15, cells = 500, balanced = TRUE)
+VizDimLoadings(cow_data_filtered, dims = 1:2, reduction = "pca")
+DimPlot(cow_data_filtered, reduction = "pca", group.by = c('Days'))
+DimPlot(cow_data_filtered, reduction = "pca", group.by = c('Experiment'))
 ```
 
 ```{r}
-cow_data <- RunUMAP(cow_data, dims = 1:10)
-DimPlot(cow_data, reduction = "umap", group.by = c('Days'))
-DimPlot(cow_data, reduction = "umap", group.by = c('Experiment'))
+DimHeatmap(cow_data_filtered, dims = 1:15, cells = 500, balanced = TRUE)
+```
+
+```{r}
+cow_data_filtered <- RunUMAP(cow_data_filtered, dims = 1:10)
+DimPlot(cow_data_filtered, reduction = "umap", group.by = c('Days'))
+DimPlot(cow_data_filtered, reduction = "umap", group.by = c('Experiment'))
 ```
 
