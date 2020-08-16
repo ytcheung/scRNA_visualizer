@@ -12,6 +12,8 @@ Orchestrating Single-Cell Analysis with Bioconductor: Workshop
 http://biocworkshops2019.bioconductor.org.s3-website-us-east-1.amazonaws.com/page/OSCABioc2019__OSCABioc2019/
 https://osca.bioconductor.org/quality-control.html#choice-of-qc-metrics
 https://bioconductor.org/packages/devel/bioc/vignettes/scran/inst/doc/scran.html
+https://nbisweden.github.io/single-cell_sib_scilifelab/session-dimensionality-reduction/scater_02_dim_reduction_compiled.nb.html#pca
+https://bioconductor.org/packages/devel/bioc/vignettes/scater/inst/doc/overview.html
 
 Seurat Tutorial:
 https://scrnaseq-course.cog.sanger.ac.uk/website/seurat-chapter.html#setup-the-seurat-object
@@ -20,7 +22,7 @@ https://learn.gencore.bio.nyu.edu/single-cell-rnaseq/
 https://broadinstitute.github.io/2019_scWorkshop/data-wrangling-scrnaseq.html
 https://nbisweden.github.io/excelerate-scRNAseq/session-qc/Quality_control.html
 
-
+https://nbisweden.github.io/workshop-scRNAseq/exercises.html
 
 Current best practices in single‐cell RNA‐seq analysis: a tutorial
 https://www.embopress.org/doi/10.15252/msb.20188746
@@ -34,45 +36,35 @@ https://www.nature.com/articles/s12276-018-0071-8#Sec3
 Normalizing single-cell RNA sequencing data: challenges and opportunities
 https://www.nature.com/articles/nmeth.4292
 
+```{r, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+install.packages("Seurat")
+BiocManager::install("scater")
+BiocManager::install("scran")
+BiocManager::install("SC3")
+```
 
 ## Setup
 Load required packages
 ```{r main, message=FALSE}
 suppressMessages(require(Seurat))
-#suppressMessages(require(cowplot))
 suppressMessages(require(scater))
-#suppressMessages(require(igraph))
 ```
 
 Read data
 ```{r}
-cow.matrix <- read.table(file="./data/rawCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
+cow.tpm <- read.table(file="./data/tpmCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
+cow.raw <- read.table(file="./data/rawCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
 cow.metadata <- read.table(file="./data/annotation.txt", na.strings = "-", sep = "\t", header = TRUE)
 cow.gene_name <- read.table(file="./data/geneInfo.txt", na.strings = "-", sep = "\t", header = TRUE)
 ```
 
-```{r, include=FALSE, eval=FALSE}
-# temp <- cbind(geneName = cow.gene_name$Gene.Name[ match(rownames(cow.matrix), cow.gene_name$Gene.ID) ], cow.matrix)
-# temp$geneName[is.na(temp$geneName)] <- rownames(temp[is.na(temp$geneName),])
-
-# row.names(temp) <- temp$geneName
-
-
-rownames(sce) <- rowData(sce)$Symbol_TENx
-
-## counts dupes from top to bottom
-dupes <- duplicated(rownames(sce))
-
-## keep all the not (!) duplicated genes
-sce <- sce[!dupes, ]
-```
-
-Create the Seruat object
+Create the Seurat object
 ```{r}
-# Keep all genes expressed in >= 3 cells
-cow <- CreateSeuratObject(counts = cow.matrix, meta.data = cow.metadata, min.cells = 3)
+cow <- CreateSeuratObject(counts = cow.raw, meta.data = cow.metadata)
 ```
-
 
 ## Quality Control
 Calculate mitochondrial proportion and ribosomal proportion
@@ -81,7 +73,7 @@ mt.genes <- cow.gene_name$Gene.ID[grep("^MT-",cow.gene_name$Gene.Name)]
 percent.mito <- Matrix::colSums(cow[mt.genes, ])/Matrix::colSums(cow) * 100
 cow <- AddMetaData(cow, percent.mito, col.name = "percent.mito")
 
-rb.genes <- cow.gene_name$Gene.ID[grep("^RP[SL]",cow.gene_name$Gene.Name)]
+rb.genes <- cow.gene_name$Gene.ID[grepl(paste(c("^RP[SL]","5_8S_rRNA","5S_rRNA"), collapse = "|"), cow.gene_name$Gene.Name)]
 percent.ribo <- Matrix::colSums(cow[rb.genes, ])/Matrix::colSums(cow) * 100
 cow <- AddMetaData(cow, percent.ribo, col.name = "percent.ribo")
 ```
@@ -96,12 +88,16 @@ sce <- addPerFeatureQC(sce)
 ### Plot QC {.tabset}
 #### Histograms
 ```{r}
-hist(sce$total/1e6, xlab="Library sizes(millions)", main="",breaks=50, col="grey80", ylab="Number of cells")
+hist(sce$total/1e6, xlab="Library sizes(Milions)", main="",breaks=50, col="grey80", ylab="Number of cells")
+abline(v="0.7",col="red")
+
 hist(sce$detected, xlab="Number of expressed genes", main="",breaks=50, col="grey80", ylab="Number of cells")
-hist(sce$subsets_mito_percent, xlab="Mito %", main="",breaks=50, col="grey80", ylab="Number of cells")
+
+hist(sce$subsets_mito_percent, xlab="MT %", main="",breaks=50, col="grey80", ylab="Number of cells")
+abline(v="20",col="red")
 ```
 
-#### QC 
+#### VlnPlot
 More than 3 MADs = Outlier
 ```{r}
 #libsize.drop <- isOutlier(sce$total, nmads=3, type="lower", log=TRUE)
@@ -116,17 +112,19 @@ More than 3 MADs = Outlier
 #data.frame(ByLibSize=sum(libsize.drop), ByLibSizeUpper=sum(libsize_u.drop), ByFeature=sum(feature.drop),ByMito=sum(mito.drop), Remaining=ncol(sce_filtered))
 
 reasons <- quickPerCellQC(sce, percent_subsets=c("subsets_mito_percent"), batch=sce@colData@listData[["Experiment"]])
-colSums(as.matrix(reasons))
 
-attr(reasons@listData[["low_lib_size"]], "thresholds")
-attr(reasons@listData[["low_n_features"]], "thresholds")
-attr(reasons@listData[["high_subsets_mito_percent"]], "thresholds")
+#attr(reasons@listData[["low_lib_size"]], "thresholds")
+#attr(reasons@listData[["low_n_features"]], "thresholds")
+#attr(reasons@listData[["high_subsets_mito_percent"]], "thresholds")
 
-plotColData(sce, x="Experiment", y="total", colour_by=I(reasons@listData[["low_lib_size"]])) + scale_y_log10()
+reasons@listData[["low_lib_size"]] <- I(reasons@listData[["low_lib_size"]] | sce$nCount_RNA > 0.7 * 1e6)
+reasons@listData[["high_subsets_mito_percent"]] <- I(reasons@listData[["high_subsets_mito_percent"]] | sce$percent.mito > 20)
+
+plotColData(sce, x="Experiment", y="total", colour_by=reasons@listData[["low_lib_size"]]) + scale_y_log10()
 plotColData(sce, x="Experiment", y="detected", colour_by=I(reasons@listData[["low_n_features"]])) + scale_y_log10()
-plotColData(sce, x="Experiment", y="percent.mito", colour_by=I(reasons@listData[["high_subsets_mito_percent"]]))
+plotColData(sce, x="Experiment", y="percent.mito", colour_by=reasons@listData[["high_subsets_mito_percent"]])
 ```
-```{r}
+```{r, include=FALSE, eval=FALSE}
 sce$discard <- reasons$discard
 gridExtra::grid.arrange(
     plotColData(sce, x="Experiment", y="sum", colour_by="discard")  + 
@@ -140,42 +138,90 @@ gridExtra::grid.arrange(
 )
 ```
 
-#### Before filtering
+#### Scatter (Raw)
 ```{r}
-VlnPlot(object = cow, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2, log = TRUE)
-VlnPlot(object = cow, features = c("percent.mito", "percent.ribo"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2)
-
-FeatureScatter(cow, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Experiment'))
-FeatureScatter(cow, feature1 = "nFeature_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
-FeatureScatter(cow, feature1 = "nCount_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+plotColData(sce, x="nCount_RNA", y="nFeature_RNA", colour_by="Experiment") + scale_x_log10()
+plotColData(sce, x="nFeature_RNA", y="percent.mito", colour_by="Experiment") 
+plotColData(sce, x="nCount_RNA", y="percent.mito", colour_by="Experiment") + scale_x_log10()
 ```
 
-#### After filtering
+#### Filtering
 ```{r}
-sce_filtered <- sce[,!reasons$discard]
-cow_filtered <- as.Seurat(sce_filtered) #subset(cow, subset = nCount_RNA > 755 & nFeature_RNA > 2699 & percent.mito < 24)
+#cow_filtered <- as.Seurat(sce_filtered) #subset(cow, subset = nCount_RNA > 755 & nFeature_RNA > 2699 & percent.mito < 24)
+sce_filtered <- sce[,!(reasons$discard | sce$nCount_RNA > 0.7*1e6 | sce$percent.mito > 20)]
 
-VlnPlot(object = cow_filtered, features = c("nCount_RNA","nFeature_RNA"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2, log = TRUE)
-VlnPlot(object = cow_filtered, features = c("percent.mito", "percent.ribo"), pt.size = 0.1, group.by = c('Experiment'), ncol = 2)
+#Remove Y chr features
+sce_filtered <- sce_filtered[!(row.names(sce_filtered) %in% cow.gene_name$Gene.Name[cow.gene_name$Reference == "NC_016145.1"])]
 
-FeatureScatter(cow_filtered, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = c('Experiment'))
-FeatureScatter(cow_filtered, feature1 = "nFeature_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
-FeatureScatter(cow_filtered, feature1 = "nCount_RNA", feature2 = "percent.mito", group.by = c('Experiment'))
+#Filter out features that are not expressed in any cells:
+summary(nexprs(sce_filtered, byrow=TRUE))
+sce_filtered <- sce_filtered[nexprs(sce_filtered, byrow=TRUE) > 0,]
+
+cow.tpm <- subset(cow.tpm, rownames(cow.tpm) %in% rownames(sce_filtered))
+```
+
+Rename
+```{r}
+gene_info <- cow.gene_name[match(rownames(sce_filtered), cow.gene_name$Gene.ID),]
+row.names(gene_info) <- gene_info$Gene.ID <- row.names(sce_filtered)
+gene_info$Gene.Name[is.na(gene_info$Gene.Name)] <- gene_info$Gene.ID[is.na(gene_info$Gene.Name)]
+
+gene_info$otherRNAs <- ifelse(
+  gene_info$Gene.ID %in% rb.genes |
+  grepl(paste(c("^U[0-9]{1,2}$","^SNOR","U6atac","U4atac"), collapse = "|"), gene_info$Gene.Name), TRUE, FALSE)
+
+#dup_conditions <- gene_info_rename$Gene.Name %in% gene_info_rename$Gene.Name[duplicated(gene_info_rename$Gene.Name)]
+#gene_info_rename$Gene.Name[dup_conditions] <- gene_info_rename$Gene.ID[dup_conditions]
+gene_info$Gene.AltName <- make.unique(as.character(gene_info$Gene.Name), sep = "*")
+gene_info$Gene.AltName <- gsub('_', '-', gene_info$Gene.AltName)
+
+sub_gene_info <- as.data.frame(cbind(Gene.ID=gene_info$Gene.ID,Gene.Name=gene_info$Gene.Name))
+rownames(sub_gene_info) <- gene_info$Gene.AltName
+
+rownames(sce_filtered) <- rownames(sub_gene_info)
+rownames(cow.tpm) <- rownames(sub_gene_info)
+cow_filtered <- as.Seurat(sce_filtered)
+
+cow_tpm <- CreateSeuratObject(counts = cow.tpm, meta.data = cow.metadata)
+cow_tpm[["RNA"]]@data <- as(log(cow_tpm[["RNA"]]@counts+1), "dgCMatrix")
+
+saveRDS(sub_gene_info, file = "./gene_info.rds")
+saveRDS(cow_filtered, file = "./cow_filtered.rds")
+saveRDS(sce_filtered, file = "./sce_filtered.rds")
+saveRDS(cow_tpm, file = "./cow_tpm.rds")
+
+#int_elementMetadata(sce_filtered) <- DataFrame(gene_info)
+#cow[["RNA"]] <- AddMetaData(cow[["RNA"]], name_map$Gene.Name, "Gene.Name")
+#cow[["RNA"]] <- AddMetaData(cow[["RNA"]], name_map$Gene.ID, "Gene.ID")
+```
+
+#### VlnPlot & Scatter (Filtered)
+```{r}
+plotColData(sce_filtered, x="Experiment", y="total") + scale_y_log10()
+plotColData(sce_filtered, x="Experiment", y="detected") + scale_y_log10()
+plotColData(sce_filtered, x="Experiment", y="percent.mito")
+
+plotColData(sce_filtered, x="nCount_RNA", y="nFeature_RNA", colour_by="Experiment") + scale_x_log10()
+plotColData(sce_filtered, x="nFeature_RNA", y="percent.mito", colour_by="Experiment") 
+plotColData(sce_filtered, x="nCount_RNA", y="percent.mito", colour_by="Experiment") + scale_x_log10()
 ```
 
 ## Normalization {.tabset}
 
 ### Seruat LogNormalize
 ```{r}
-cow_logNorm <- NormalizeData(object = cow_filtered, normalization.method = "LogNormalize", scale.factor = 10000)
+cow_logNorm2 <- NormalizeData(object = cow_filtered, normalization.method = "LogNormalize", scale.factor = 10000)
 cow_logNorm <- FindVariableFeatures(cow_logNorm, selection.method = "vst", nfeatures = 2000)
-cow_logNorm <- ScaleData(object = cow_logNorm)
+all.genes <- rownames(cow_logNorm)
+cow_logNorm <- ScaleData(object = cow_logNorm, features = all.genes)
+
+saveRDS(cow_logNorm, file = "./cow_logNorm.rds")
 ```
 
-### Sctransform install_github("C3BI-pasteur-fr/UTechSCB-SCHNAPPs", dependencies = TRUE)
-```{r, eval = FALSE}
-cow_sct <- SCTransform(cow_filtered, verbose = FALSE)
-
+### Sctransform
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+cow_sct <- suppressMessages(SCTransform(cow_filtered, verbose = FALSE, variable.features.n = 2000, return.only.var.genes = FALSE))
+#summary(nexprs(cow_sct@assays$RNA@counts[!(rownames(cow_sct@assays$RNA@counts) %in% rownames(cow_sct@assays$SCT@counts) ),], byrow=TRUE))
 saveRDS(cow_sct, file = "./cow_sct.rds")
 ```
 
@@ -185,11 +231,22 @@ library(scran)
 
 set.seed(100)
 clusters <- quickCluster(sce_filtered)
-sce_scran <- computeSumFactors(sce_filtered, clusters=clusters)  
-sce_scran <- logNormCounts(sce_scran)
+sce_filtered <- computeSumFactors(sce_filtered, clusters=clusters)  
 
-dec <- modelGeneVar(sce_scran)
-top.hvgs <- getTopHVGs(dec, n=2000)
+sce_scran <- logNormCounts(sce_filtered)
+sce_scran_noLog <- logNormCounts(sce_filtered, log = FALSE) # without(!) log transform
+
+saveRDS(sce_scran, file = "./sce_scran.rds")
+saveRDS(sce_scran_noLog, file = "./sce_scran_noLog.rds")
+
+cow_scran <- cow_filtered
+cow_scran[["RNA"]]@data <- as(log(assay(sce_scran_noLog, "normcounts")+1), "dgCMatrix")
+
+cow_scran <- FindVariableFeatures(cow_scran, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(cow_scran)
+cow_scran <- ScaleData(object = cow_scran, features = all.genes)
+
+saveRDS(cow_scran, file = "./cow_scran.rds")
 ```
 
 ## PCA {.tabset}
@@ -197,33 +254,130 @@ top.hvgs <- getTopHVGs(dec, n=2000)
 ### (Seurat Log Normalize)
 ```{r}
 cow_logNorm <- RunPCA(cow_logNorm, npcs = 30, verbose = FALSE)
-cow_logNorm <- RunUMAP(cow_logNorm, reduction = "pca", dims = 1:30, verbose = FALSE)
+
+## Determine PC
+cow_logNorm_temp <- JackStraw(cow_logNorm, num.replicate = 100)
+cow_logNorm_temp <- ScoreJackStraw(cow_logNorm_temp, dims = 1:20)
+JackStrawPlot(cow_logNorm_temp, dims = 1:20)
+ElbowPlot(cow_logNorm_temp)
+
+set.seed(100)
+cow_logNorm <- RunUMAP(cow_logNorm, reduction = "pca", dims = 1:20, verbose = FALSE, n.components=4)
+cow_logNorm <- RunTSNE(cow_logNorm, reduction = "pca", dims = 1:20, verbose = FALSE, dim.embed=3, perplexity=30)
 
 DimPlot(cow_logNorm, reduction = "pca", group.by = "Experiment")
-
 DimPlot(cow_logNorm, reduction = "umap", group.by = "Experiment")
-DimPlot(cow_logNorm, reduction = "umap", group.by = "Cell_type", label = TRUE, repel = TRUE) + NoLegend()
+DimPlot(cow_logNorm, reduction = "umap", group.by = "Cell_type")
+DimPlot(cow_logNorm, reduction = "tsne", group.by = "Experiment")
+DimPlot(cow_logNorm, reduction = "tsne", group.by = "Cell_type")
+
+saveRDS(cow_logNorm, file = "./cow_logNorm.rds")
 ```
 
 ### (Seurat SCT)
 ```{r, eval = FALSE}
 cow_sct <- RunPCA(cow_sct, npcs = 30, verbose = FALSE)
-cow_sct <- RunUMAP(cow_sct, reduction = "pca", dims = 1:30, verbose = FALSE)
+
+## Determine PC
+ElbowPlot(cow_sct)
+
+set.seed(100)
+cow_sct <- RunUMAP(cow_sct, reduction = "pca", dims = 1:21, verbose = FALSE, n.components=4)
+cow_sct <- RunTSNE(cow_sct, reduction = "pca", dims = 1:21, verbose = FALSE, dim.embed=3, perplexity=30)
 
 DimPlot(cow_sct, reduction = "pca", group.by = "Experiment")
-
 DimPlot(cow_sct, reduction = "umap", group.by = "Experiment")
-DimPlot(cow_sct, reduction = "umap", group.by = "Cell_type", label = TRUE, repel = TRUE) + NoLegend()
-```
+DimPlot(cow_sct, reduction = "umap", group.by = "Cell_type")
+DimPlot(cow_sct, reduction = "tsne", group.by = "Experiment")
+DimPlot(cow_sct, reduction = "tsne", group.by = "Cell_type")
 
+saveRDS(cow_sct, file = "./cow_sct.rds")
+```
+### (Scran - PCA by Seurat)
+```{r}
+cow_scran <- RunPCA(cow_scran, npcs = 30, verbose = FALSE)
+
+## Determine PC
+cow_scran_temp <- JackStraw(cow_scran, num.replicate = 100)
+cow_scran_temp <- ScoreJackStraw(cow_scran_temp, dims = 1:20)
+JackStrawPlot(cow_scran_temp, dims = 1:20)
+ElbowPlot(cow_scran_temp)
+
+set.seed(100)
+
+cow_scran <- RunUMAP(cow_scran, reduction = "pca", dims = 1:19, verbose = FALSE, n.components=4)
+cow_scran <- RunTSNE(cow_scran, reduction = "pca", dims = 1:19, verbose = FALSE, dim.embed=3, perplexity=30)
+
+DimPlot(cow_scran, reduction = "pca", group.by = "Experiment")
+DimPlot(cow_scran, reduction = "umap", group.by = "Experiment")
+DimPlot(cow_scran, reduction = "umap", group.by = "Cell_type")
+DimPlot(cow_scran, reduction = "tsne", group.by = "Experiment")
+DimPlot(cow_scran, reduction = "tsne", group.by = "Cell_type")
+
+saveRDS(cow_scran, file = "./cow_scran.rds")
+```
 ### (Scran)
 ```{r}
-sce_scran <- runPCA(sce_scran)
-sce_scran <- runUMAP(sce_scran, dimred = 'PCA', n_dimred = 30)
+dec <- modelGeneVar(sce_scran)
+top.hvgs <- getTopHVGs(dec, n=2000)
+sce_scran <- scater::runPCA(sce_scran, ncomponents = 30, subset_row = top.hvgs, scale = TRUE)
+```
+
+Determine no. of PC
+```{r}
+#1) Using elbow plot
+plot(attr(reducedDim(sce_scran, 'PCA'), 'percentVar'))
+
+#2) Using the technical noise
+denoised.scran <- denoisePCA(sce_scran, technical=dec, subset.row=top.hvgs)
+ncol(reducedDim(denoised.scran))
+
+#3) Based on population structure
+choices  <- getClusteredPCs(reducedDim(sce_scran, 'PCA'))
+metadata(choices)$chosen 
+#reducedDim(sce_scran, "PCAsub") <- reducedDim(sce_scran, "PCA")[,1:npcs,drop=FALSE]
+```
+
+
+```{r}
+set.seed(100)
+sce_scran <- scater::runUMAP(sce_scran, dimred = 'PCA', n_dimred = 7, ncomponents = 4)
+sce_scran <- scater::runTSNE(sce_scran, use_dimred = "PCA", n_dimred = 7, ncomponents = 3, perplexity=30)
 
 plotReducedDim(sce_scran, dimred="PCA", colour_by="Experiment")
 plotReducedDim(sce_scran, dimred="UMAP", colour_by="Experiment")
 plotReducedDim(sce_scran, dimred="UMAP", colour_by="Cell_type")
+plotReducedDim(sce_scran, dimred="TSNE", colour_by="Experiment")
+plotReducedDim(sce_scran, dimred="TSNE", colour_by="Cell_type")
+
+saveRDS(sce_scran, file = "./sce_scran.rds")
+```
+### (TPM)
+```{r}
+cow_tpm <- FindVariableFeatures(cow_tpm, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(cow_tpm)
+cow_tpm <- ScaleData(object = cow_tpm, features = all.genes)
+cow_tpm <- RunPCA(cow_tpm, npcs = 30, verbose = FALSE)
+
+## Determine PC
+cow_tpm_temp <- JackStraw(cow_tpm, num.replicate = 100)
+cow_tpm_temp <- ScoreJackStraw(cow_tpm_temp, dims = 1:20)
+JackStrawPlot(cow_tpm_temp, dims = 1:20)
+ElbowPlot(cow_tpm_temp)
+
+set.seed(100)
+
+cow_tpm <- RunUMAP(cow_tpm, reduction = "pca", dims = 1:12, verbose = FALSE, n.components=4)
+cow_tpm <- RunTSNE(cow_tpm, reduction = "pca", dims = 1:12, verbose = FALSE, dim.embed=3, perplexity=30)
+
+
+DimPlot(cow_tpm, reduction = "pca", group.by = "Experiment")
+DimPlot(cow_tpm, reduction = "umap", group.by = "Experiment")
+DimPlot(cow_tpm, reduction = "umap", group.by = "Cell_type")
+DimPlot(cow_tpm, reduction = "tsne", group.by = "Experiment")
+DimPlot(cow_tpm, reduction = "tsne", group.by = "Cell_type")
+
+saveRDS(cow_tpm, file = "./cow_tpm.rds")
 ```
 
 ## Integration {.tabset}
@@ -233,14 +387,15 @@ cow_logNorm.list <- SplitObject(cow_logNorm, split.by = "Experiment")
 
 for (i in 1:length(cow_logNorm.list)) {
     cow_logNorm.list[[i]] <- NormalizeData(cow_logNorm.list[[i]], verbose = FALSE)
-    cow_logNorm.list[[i]] <- FindVariableFeatures(cow_logNorm.list[[i]], selection.method = "vst", nfeatures = 2000, 
-        verbose = FALSE)
+    #cow_logNorm.list[[i]] <- FindVariableFeatures(cow_logNorm.list[[i]], selection.method = "vst", nfeatures = 2000, verbose = FALSE)
 }
 
 reference.list <- cow_logNorm.list[c("Exp1", "Exp2", "Exp3")]
 k.filter <- min(200, sapply(cow_logNorm.list, ncol)) 
-cow_logNorm.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30, k.filter = k.filter)
-cow_logNorm.integrated <- IntegrateData(anchorset = cow_logNorm.anchors, dims = 1:30)
+cow_logNorm.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30, k.filter = k.filter)#, anchor.features = 5000)
+
+#all_genes <- row.names(cow_logNorm)
+cow_logNorm.integrated <- IntegrateData(anchorset = cow_logNorm.anchors, dims = 1:30) #, features.to.integrate =  all_genes)
 
 DefaultAssay(cow_logNorm.integrated) <- "integrated"
 cow_logNorm.integrated <- ScaleData(cow_logNorm.integrated, verbose = FALSE)
@@ -287,38 +442,88 @@ DimPlot(cow_sct.integrated, reduction = "umap", group.by = "Cell_type", label = 
 library(batchelor)
   
 #rescaled <- rescaleBatches(sce_scran, batch=sce_scran$Experiment)
+sce_scran.fastmnn <- sce_scran
+sce_scran.fastmnn <- fastMNN(sce_scran.fastmnn, batch=sce_scran.fastmnn$Experiment)
+reducedDim(sce_scran.fastmnn, "MNN") <- reducedDim(sce_scran.fastmnn, "corrected")
 
-mnn_out <- fastMNN(sce_scran, batch=sce_scran$Experiment)
-reducedDim(sce_scran, "MNN") <- reducedDim(mnn_out, "corrected")
+sce_scran.fastmnn <-  scater::runPCA(sce_scran.fastmnn, dimred = 'MNN', ncomponents = 30)
+sce_scran.fastmnn <-  scater::runUMAP(sce_scran.fastmnn, dimred = 'PCA', n_dimred = 30, ncomponents = 30)
+sce_scran.fastmnn <-  scater::runTSNE(sce_scran.fastmnn, use_dimred = "PCA", n_dimred = 30, ncomponents = 3)
 
-sce_scran <- runPCA(sce_scran, dimred = 'MNN')
-sce_scran <- runUMAP(sce_scran, dimred = 'PCA', n_dimred = 30)
-
-plotReducedDim(sce_scran, dimred="PCA", colour_by="Experiment")
-plotReducedDim(sce_scran, dimred="UMAP", colour_by="Experiment")
-plotReducedDim(sce_scran, dimred="UMAP", colour_by="Cell_type")
+plotReducedDim(sce_scran.fastmnn, dimred="PCA", colour_by="Experiment")
+plotReducedDim(sce_scran.fastmnn, dimred="UMAP", colour_by="Experiment")
+plotReducedDim(sce_scran.fastmnn, dimred="TSNE", colour_by="Experiment")
 ```
 
-## Determine PC
 ```{r}
-DimHeatmap(cow_logNorm.integrated, dims = 1:9, cells = 500, balanced = TRUE)
-DimHeatmap(cow_logNorm.integrated, dims = 10:18, cells = 500, balanced = TRUE)
+cow_scran <- as.Seurat(sce_scran)
 
-cow_logNorm.integrated <- JackStraw(cow_logNorm.integrated, num.replicate = 100)
-cow_logNorm.integrated <- ScoreJackStraw(cow_logNorm.integrated, dims = 1:20)
-JackStrawPlot(cow_logNorm.integrated, dims = 1:20)
-ElbowPlot(cow_logNorm.integrated)
+library(liger)
+library(SeuratData)
+library(SeuratWrappers)
+
+cow_scran <- ScaleData(cow_scran, split.by = "Experiment", do.center = FALSE)
+cow_scran <- RunOptimizeALS(cow_scran, k = 20, lambda = 5, split.by = "Experiment")
+cow_scran <- RunQuantileNorm(cow_scran, split.by = "Experiment")
+
+
+#cow_scran <-  RunUMAP(cow_scran, dims = 1:ncol(pbmcsca[["iNMF"]]), reduction = "iNMF")
+#
+#DimPlot(cow_logNorm, reduction = "pca", group.by = "Experiment")
+#DimPlot(cow_logNorm, reduction = "umap", group.by = "Experiment")
+
+
+sce_scran.liger <-  as.SingleCellExperiment(cow_scran)
+
+sce_scran.liger <-  scater::runPCA(sce_scran.liger, dimred = 'INMF', ncomponents = 9)
+sce_scran.liger <- scater::runUMAP(sce_scran.liger, dimred = 'PCA', ncomponents = 9)
+sce_scran.liger <- scater::runTSNE(sce_scran.liger, use_dimred = "PCA", ncomponents = 3)
+
+plotReducedDim(sce_scran.liger, dimred="PCA", colour_by="Experiment")
+plotReducedDim(sce_scran.liger, dimred="UMAP", colour_by="Experiment")
+plotReducedDim(sce_scran.liger, dimred="TSNE", colour_by="Experiment")
+
+saveRDS(sce_scran.liger, file = "./sce_scran.liger.rds")
 ```
 
 ## Clustering
 ```{r}
-cow_logNorm.integrated <- FindNeighbors(cow_logNorm.integrated, dims = 1:14)
-cow_logNorm.integrated <- FindClusters(cow_logNorm.integrated, resolution = 0.5)
+library(SC3)
+cow_logNorm.sce <- as.SingleCellExperiment(cow_logNorm)
+cow_sct.sce <- as.SingleCellExperiment(cow_sct)
+cow_scran.sce <- as.SingleCellExperiment(cow_scran)
+cow_tpm.sce <- as.SingleCellExperiment(cow_tpm)
 
-cow_logNorm.integrated <- RunUMAP(cow_logNorm.integrated, dims = 1:14)
-DimPlot(cow_logNorm.integrated, reduction = "umap")
+rowData(cow_logNorm.sce)$feature_symbol <- rownames(cow_logNorm.sce)
+counts(cow_logNorm.sce) <- as.matrix(counts(cow_logNorm.sce))
+logcounts(cow_logNorm.sce) <- as.matrix(logcounts(cow_logNorm.sce))
+cow_logNorm.sce <- sc3(cow_logNorm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+saveRDS(cow_logNorm.sce, file = "./cow_logNorm.sce.rds")
 
-cow_logNorm.integrated <- RunTSNE(object = cow_logNorm.integrated, dims.use = 1:14, do.fast = TRUE)
-DimPlot(object = cow_logNorm.integrated, reduction = "tsne")
+rowData(cow_sct.sce)$feature_symbol <- rownames(cow_sct.sce)
+counts(cow_sct.sce) <- as.matrix(counts(cow_sct.sce))
+logcounts(cow_sct.sce) <- as.matrix(logcounts(cow_sct.sce))
+cow_sct.sce <- sc3(cow_sct.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+saveRDS(cow_sct.sce, file = "./cow_sct.sce.rds")
+
+rowData(cow_scran.sce)$feature_symbol <- rownames(cow_scran.sce)
+counts(cow_scran.sce) <- as.matrix(counts(cow_scran.sce))
+logcounts(cow_scran.sce) <- as.matrix(logcounts(cow_scran.sce))
+cow_scran.sce <- sc3(cow_scran.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+saveRDS(cow_scran.sce, file = "./cow_scran.sce.rds")
+
+rowData(cow_tpm.sce)$feature_symbol <- rownames(cow_tpm.sce)
+counts(cow_tpm.sce) <- as.matrix(counts(cow_tpm.sce))
+logcounts(cow_tpm.sce) <- as.matrix(logcounts(cow_tpm.sce))
+cow_tpm.sce <- sc3(cow_tpm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+saveRDS(cow_tpm.sce, file = "./cow_tpm.sce.rds")
+
+# cow_logNorm.integrated <- FindNeighbors(cow_logNorm.integrated, dims = 1:14)
+# cow_logNorm.integrated <- FindClusters(cow_logNorm.integrated, resolution = 0.5)
+# 
+# cow_logNorm.integrated <- RunUMAP(cow_logNorm.integrated, dims = 1:14)
+# DimPlot(cow_logNorm.integrated, reduction = "umap")
+# 
+# cow_logNorm.integrated <- RunTSNE(object = cow_logNorm.integrated, dims.use = 1:14, do.fast = TRUE)
+# DimPlot(object = cow_logNorm.integrated, reduction = "tsne")
 ```
-

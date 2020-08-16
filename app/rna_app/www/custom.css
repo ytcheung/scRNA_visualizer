@@ -111,9 +111,30 @@ a > .highlight { background-color:#fdfdfd;}
 }
 
 .content-wrapper, .right-side {
-  background-color: #f3faff !important
+  background-color: #E5E5E5 !important
   }
-  
+
+.shiny-output-error-validation {
+  color: darkred; 
+}
+                      
+.skin-purple .main-header .logo {
+    background-color: #870052;
+}
+
+/* logo when hovered */
+.skin-purple .main-header .logo:hover {
+    background-color: #D40963;
+}
+
+/* navbar (rest of the header) */
+.skin-purple .main-header .navbar {
+  background-color: #870052;
+}
+/* toggle button when hovered  */                    
+.skin-purple .main-header .navbar .sidebar-toggle:hover{
+    background-color: #D40963;
+}
   
 .xmark__circle {
   stroke-dasharray: 166;

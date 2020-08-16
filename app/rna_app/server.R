@@ -1,14 +1,20 @@
 server <- function(input, output, session) {
     
-    qc_reasons <- readRDS("~/KI - Science Park/ki_summer/app/rna_app/data/qc_reasons.rds")
+    qc_reasons <- readRDS("data/qc_reasons.rds")
+    gene_info <- readRDS("data/gene_info.rds")
+    sce_raw <- readRDS("data/sce_raw.rds")
+    sce <- readRDS("data/sce.rds")
     
-    #cow <- readRDS("~/KI - Science Park/ki_summer/app/rna_app/data/cow.rds")
-    #cow_filtered <- readRDS("~/KI - Science Park/ki_summer/app/rna_app/data/cow_filtered.rds")
+    exp.matrix <- sce@assays@data@listData[["logcounts"]]
     
-    cow_sce <- readRDS("~/KI - Science Park/ki_summer/app/rna_app/data/cow_sce.rds")
-    cow_sce_filtered <- readRDS("~/KI - Science Park/ki_summer/app/rna_app/data/cow_sce_filtered.rds")
+    source("plotFunctions.R")
+    source("commonFunctions.R")
     
     source("server-qc.R",local = TRUE)
+    source("server-pca.R",local = TRUE)
+    source("server-gene-exp.R",local = TRUE)
+    source("server-exp-distr.R",local = TRUE)
+    source("server-de.R",local = TRUE)
     
     GotoTab <- function(name){
         
