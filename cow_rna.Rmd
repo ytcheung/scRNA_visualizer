@@ -43,7 +43,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 install.packages("Seurat")
 BiocManager::install("scater")
 BiocManager::install("scran")
-BiocManager::install("SC3")
+#BiocManager::install("SC3")
 ```
 
 ## Setup
@@ -59,7 +59,13 @@ cow.tpm <- read.table(file="./data/tpmCounts.txt", na.strings = "-", sep = "\t",
 cow.raw <- read.table(file="./data/rawCounts.txt", na.strings = "-", sep = "\t", header = TRUE)
 cow.metadata <- read.table(file="./data/annotation.txt", na.strings = "-", sep = "\t", header = TRUE)
 cow.gene_name <- read.table(file="./data/geneInfo.txt", na.strings = "-", sep = "\t", header = TRUE)
+
+cow.metadata$Days_Type <- cow.metadata$Days
+cow.metadata[cow.metadata$Days != cow.metadata$Cell_type,]$Days_Type <- paste0(cow.metadata[cow.metadata$Days != cow.metadata$Cell_type,]$Days, " - ", cow.metadata[cow.metadata$Days != cow.metadata$Cell_type,]$Cell_type)
+cow.metadata$Sample <- NULL #Delete unnecessary column(s) -> reduce file size of exported rds
+#saveRDS(cow.metadata, file = "./cow.metadata.rds")
 ```
+
 
 Create the Seurat object
 ```{r}
@@ -194,6 +200,26 @@ saveRDS(cow_tpm, file = "./cow_tpm.rds")
 #cow[["RNA"]] <- AddMetaData(cow[["RNA"]], name_map$Gene.Name, "Gene.Name")
 #cow[["RNA"]] <- AddMetaData(cow[["RNA"]], name_map$Gene.ID, "Gene.ID")
 ```
+
+Annotation
+```{r}
+#Bovine bEPI Preimplantation TOPModular Genes
+bEPI <- c('GDF3','PRDM14','TDGF1','FGF4','ZIC3','NANOG','SOX15','LIN28B','ZFP42', 'IFITM1', 'IFITM3','TDF1P3','PRICKLE1','DPPA5','KLF17','KLF4','ARGFX','ESRG','MRS2','POU5F1', 'LEFTY2', 'WNT3','VENTX','SERINC5','FBP1','MT1X','ATG3','CDHR1','DND1','SAT1','PARP1','CFLAR','MAN1C1','CD9','CAPG','SOX2','PIM2','TVC1D23','UNC5B','DPPA2','MEG3','ASH2L','MSH6','CBFA2T2','MRPS23','USP28','BCOR','VCAN','ETV4','CNIH4','DEPTOR','ABHD12B','NODAL','GPR160','SPRY2','SLC39A10','WARS','ASRGL1',"ESRRB")
+
+#Bovineb PE New Preimplantation TOP Modular Genes
+bPE <- c('UACA','PDGFRA', 'GATA6', 'GATA4', 'COL4A1', 'HNF1B', 'NID2', 'RSPO3', 'APOA1','SOX17','GAPDA', 'FN1', 'LAMB1','LBH', 'KIT', 'FGFR2','GPX2', 'LAMA4', 'LAMA1','BMP2','SERPINH1','P4HA1','EGLN3','ZC3HAV1','BAMBI','GPRC5B', 'MARCKS','HNF4A', 'DUSP1','ALDH2','APOC1','TCEA1','CDC42EP4','PHLDA1','SEPT11','ENO2','SLC4A8','HORMAD2-AS1','ST3GAL1','NDUFAB1','SPARC','SPATS2L','TMBIM1','UQCRH','TPST2','GYPC','RCBTB1','PXDN','TBCA','RAB15','CLDN19','KLHL18','CADM1','FGFR1','UBASH3B','SRGAP1','GSN','CTSE','GSTO1','BRDT','OTX2','LARP6','UQCRHL')
+
+#Bovine bTE New Preimplantation TOP Modular Genes
+bTE <- c('CLDN4','GATA3','GATA2','KRT18','PPIA','CDX2','TEAD4','DAB2','SLC7A2','ABCG2', 'MYC', 'LRP2', 'WNT7A', 'FDGFA', 'FRDM4','KRT8','GRHL2','TACSTD2','MPZL1','PALLD','TACC1','LRRFIP1','RAB11FIP4','RALBP1','PTGES','EMP2','PTN','SH3KBP1','SH2D4A','TEAD1','MGST3','TGFBR3','ODC1','S100A6','JUP','TCF7L2','PRSS8','CEBPA','SLC7A4','ZFHX3','VAMP8','ENTPD1','HIC2','SLC7A5','DLX3','EFNA1','TIGAR','GRHL1','FOLR1','CD55','GAB2','ADK','PPT1','PERP','FHL2','KRT19','TMEM106C',"TMEM54")
+
+sub_gene_info$Annotation <- "UN" 
+sub_gene_info[sub_gene_info$Gene.Name %in% bEPI,]$Annotation <- "EPI"
+sub_gene_info[sub_gene_info$Gene.Name %in% bPE,]$Annotation <- "PE"
+sub_gene_info[sub_gene_info$Gene.Name %in% bTE,]$Annotation <- "TE"
+
+saveRDS(sub_gene_info, file = "./gene_info.rds")
+```
+
 
 #### VlnPlot & Scatter (Filtered)
 ```{r}
@@ -380,6 +406,62 @@ DimPlot(cow_tpm, reduction = "tsne", group.by = "Cell_type")
 saveRDS(cow_tpm, file = "./cow_tpm.rds")
 ```
 
+## Clustering
+```{r}
+# library(SC3)
+# cow_logNorm.sce <- as.SingleCellExperiment(cow_logNorm)
+# cow_sct.sce <- as.SingleCellExperiment(cow_sct)
+# cow_scran.sce <- as.SingleCellExperiment(cow_scran)
+# cow_tpm.sce <- as.SingleCellExperiment(cow_tpm)
+# 
+# rowData(cow_logNorm.sce)$feature_symbol <- rownames(cow_logNorm.sce)
+# counts(cow_logNorm.sce) <- as.matrix(counts(cow_logNorm.sce))
+# logcounts(cow_logNorm.sce) <- as.matrix(logcounts(cow_logNorm.sce))
+# cow_logNorm.sce <- sc3(cow_logNorm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+# saveRDS(cow_logNorm.sce, file = "./cow_logNorm.sce.rds")
+# 
+# rowData(cow_sct.sce)$feature_symbol <- rownames(cow_sct.sce)
+# counts(cow_sct.sce) <- as.matrix(counts(cow_sct.sce))
+# logcounts(cow_sct.sce) <- as.matrix(logcounts(cow_sct.sce))
+# cow_sct.sce <- sc3(cow_sct.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+# saveRDS(cow_sct.sce, file = "./cow_sct.sce.rds")
+# 
+# rowData(cow_scran.sce)$feature_symbol <- rownames(cow_scran.sce)
+# counts(cow_scran.sce) <- as.matrix(counts(cow_scran.sce))
+# logcounts(cow_scran.sce) <- as.matrix(logcounts(cow_scran.sce))
+# cow_scran.sce <- sc3(cow_scran.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+# saveRDS(cow_scran.sce, file = "./cow_scran.sce.rds")
+# 
+# rowData(cow_tpm.sce)$feature_symbol <- rownames(cow_tpm.sce)
+# counts(cow_tpm.sce) <- as.matrix(counts(cow_tpm.sce))
+# logcounts(cow_tpm.sce) <- as.matrix(logcounts(cow_tpm.sce))
+# cow_tpm.sce <- sc3(cow_tpm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
+# saveRDS(cow_tpm.sce, file = "./cow_tpm.sce.rds")
+
+cow_sct <- FindNeighbors(cow_sct, dims = 1:21)
+cow_sct <- FindClusters(cow_sct, resolution = 0.5)
+saveRDS(cow_sct, file = "./cow_sct.rds")
+
+cow_tpm <- FindNeighbors(cow_tpm, dims = 1:12)
+cow_tpm <- FindClusters(cow_tpm, resolution = 0.5)
+saveRDS(cow_tpm, file = "./cow_tpm.rds")
+```
+
+## DE
+```{r}
+de_tpm <- FindAllMarkers(cow_tpm, min.pct = 0.25, logfc.threshold = 0.5)
+de_sct <- FindAllMarkers(cow_sct, min.pct = 0.25, logfc.threshold = 0.5)
+saveRDS(de_tpm, file = "./de_tpm.rds")
+saveRDS(de_sct, file = "./de_sct.rds")
+```
+```{r}
+cow_sct.sce <- as.SingleCellExperiment(cow_sct)
+cow_tpm.sce <- as.SingleCellExperiment(cow_tpm)
+saveRDS(cow_sct.sce, file = "./cow_sct.sce.rds")
+saveRDS(cow_tpm.sce, file = "./cow_tpm.sce.rds")
+```
+
+
 ## Integration {.tabset}
 ### (Seurat Log Normalize)
 ```{r}
@@ -392,7 +474,7 @@ for (i in 1:length(cow_logNorm.list)) {
 
 reference.list <- cow_logNorm.list[c("Exp1", "Exp2", "Exp3")]
 k.filter <- min(200, sapply(cow_logNorm.list, ncol)) 
-cow_logNorm.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30, k.filter = k.filter)#, anchor.features = 5000)
+cow_logNorm.anchors <- FindIntegrationAnchors(object.list = reference.list, dims = 1:30, k.filter = k.filter)
 
 #all_genes <- row.names(cow_logNorm)
 cow_logNorm.integrated <- IntegrateData(anchorset = cow_logNorm.anchors, dims = 1:30) #, features.to.integrate =  all_genes)
@@ -437,7 +519,7 @@ DimPlot(cow_sct.integrated, reduction = "umap", group.by = "Experiment")
 DimPlot(cow_sct.integrated, reduction = "umap", group.by = "Cell_type", label = TRUE, repel = TRUE) + NoLegend()
 ```
 
-### (Scran)
+### (Scran Fastmnn)
 ```{r}
 library(batchelor)
   
@@ -455,6 +537,7 @@ plotReducedDim(sce_scran.fastmnn, dimred="UMAP", colour_by="Experiment")
 plotReducedDim(sce_scran.fastmnn, dimred="TSNE", colour_by="Experiment")
 ```
 
+###(Scran Liger)
 ```{r}
 cow_scran <- as.Seurat(sce_scran)
 
@@ -484,46 +567,4 @@ plotReducedDim(sce_scran.liger, dimred="UMAP", colour_by="Experiment")
 plotReducedDim(sce_scran.liger, dimred="TSNE", colour_by="Experiment")
 
 saveRDS(sce_scran.liger, file = "./sce_scran.liger.rds")
-```
-
-## Clustering
-```{r}
-library(SC3)
-cow_logNorm.sce <- as.SingleCellExperiment(cow_logNorm)
-cow_sct.sce <- as.SingleCellExperiment(cow_sct)
-cow_scran.sce <- as.SingleCellExperiment(cow_scran)
-cow_tpm.sce <- as.SingleCellExperiment(cow_tpm)
-
-rowData(cow_logNorm.sce)$feature_symbol <- rownames(cow_logNorm.sce)
-counts(cow_logNorm.sce) <- as.matrix(counts(cow_logNorm.sce))
-logcounts(cow_logNorm.sce) <- as.matrix(logcounts(cow_logNorm.sce))
-cow_logNorm.sce <- sc3(cow_logNorm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
-saveRDS(cow_logNorm.sce, file = "./cow_logNorm.sce.rds")
-
-rowData(cow_sct.sce)$feature_symbol <- rownames(cow_sct.sce)
-counts(cow_sct.sce) <- as.matrix(counts(cow_sct.sce))
-logcounts(cow_sct.sce) <- as.matrix(logcounts(cow_sct.sce))
-cow_sct.sce <- sc3(cow_sct.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
-saveRDS(cow_sct.sce, file = "./cow_sct.sce.rds")
-
-rowData(cow_scran.sce)$feature_symbol <- rownames(cow_scran.sce)
-counts(cow_scran.sce) <- as.matrix(counts(cow_scran.sce))
-logcounts(cow_scran.sce) <- as.matrix(logcounts(cow_scran.sce))
-cow_scran.sce <- sc3(cow_scran.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
-saveRDS(cow_scran.sce, file = "./cow_scran.sce.rds")
-
-rowData(cow_tpm.sce)$feature_symbol <- rownames(cow_tpm.sce)
-counts(cow_tpm.sce) <- as.matrix(counts(cow_tpm.sce))
-logcounts(cow_tpm.sce) <- as.matrix(logcounts(cow_tpm.sce))
-cow_tpm.sce <- sc3(cow_tpm.sce, ks= 6:8, n_cores = 1) #biology = TRUE, k_estimator = TRUE
-saveRDS(cow_tpm.sce, file = "./cow_tpm.sce.rds")
-
-# cow_logNorm.integrated <- FindNeighbors(cow_logNorm.integrated, dims = 1:14)
-# cow_logNorm.integrated <- FindClusters(cow_logNorm.integrated, resolution = 0.5)
-# 
-# cow_logNorm.integrated <- RunUMAP(cow_logNorm.integrated, dims = 1:14)
-# DimPlot(cow_logNorm.integrated, reduction = "umap")
-# 
-# cow_logNorm.integrated <- RunTSNE(object = cow_logNorm.integrated, dims.use = 1:14, do.fast = TRUE)
-# DimPlot(object = cow_logNorm.integrated, reduction = "tsne")
 ```

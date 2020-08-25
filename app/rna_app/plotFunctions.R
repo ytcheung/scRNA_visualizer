@@ -2,7 +2,20 @@ library(RColorBrewer)
 library(ggplot2)
 library(gdata)
 
-plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette, plotName) {
+plotHisto <- function(xlab,xVar,xScale,title){
+  df <- data.frame(varX=xVar/xScale)
+  
+  g <- ggplot(df, aes(x=varX)) + 
+    geom_histogram(color="black", fill="white") +
+    theme_bw(base_size=15) +
+    xlab(xlab) +
+    ylab("Count") +
+    ggtitle(title) 
+  
+  return(g)
+}
+
+plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette) {
   if(!is.null(Grp)){
     df <- data.frame(varY=yVar, varX=xVar, Group=as.factor(Grp))
   } else {
@@ -21,10 +34,10 @@ plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, p
     ylab(ylab) +
     ggtitle(title) 
   
-  g
+  return(g)
 }
 
-plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette, plotName) {
+plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette) {
   data <- data.frame(varY=yVar, varX=xVar, Group=as.factor(Grp))
   
   g <- ggplot(data, aes(x=varX, y=varY, colour=Group)) + 
@@ -37,10 +50,10 @@ plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, titl
     ylab(ylab) +
     ggtitle(title)
   
-  g
+  return(g)
 }
 
-plotScatterFeatures <- function(coordinate.matrix, exp.matrix, marker, group, grpLabel, xLab, yLab, point.size, plotName) {
+plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grpLabel, xLab, yLab, point.size) {
   if(!is.null(group)){
     df <- data.frame(coordinate.matrix, Exp = exp.matrix, Group = as.factor(group))
     g <- ggplot(df, aes(x = df[,1], y = df[,2], shape = Group))
@@ -51,7 +64,7 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, marker, group, gr
 
   g <- g +
     geom_point(mapping = aes(colour = Exp), size = point.size) +
-    scale_colour_gradient2(low = "gray", mid = "pink", high = "red3", 
+    scale_colour_gradient2(low = "gray", mid = "yellow", high = "red3", 
                            midpoint = ((max(df$Exp) - min(df$Exp))/2), 
                            space = "Lab", na.value = "midnightblue", 
                            guide = "colourbar", limits=c(min(df$Exp), max(df$Exp))) +
@@ -59,42 +72,9 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, marker, group, gr
     xlab(xLab) +
     ylab(yLab) +
     theme_bw(base_size=15) +
-    ggtitle(marker)
+    ggtitle(title)
   
-  g
-}
-
-################################################################################
-# Catergorize markers to EPI, PE and TE
-# input: vector of gene names
-# output: data frame with gene name and annotation
-################################################################################
-CategorizeMarkers <- function (data) {
-  
-  #Bovine bEPI Preimplantation TOPModular Genes
-  bEPI <- c('GDF3','PRDM14','TDGF1','FGF4','ZIC3','NANOG','SOX15','LIN28B','ZFP42', 'IFITM1', 'IFITM3','TDF1P3','PRICKLE1','DPPA5','KLF17','KLF4','ARGFX','ESRG','MRS2','POU5F1', 'LEFTY2', 'WNT3','VENTX','SERINC5','FBP1','MT1X','ATG3','CDHR1','DND1','SAT1','PARP1','CFLAR','MAN1C1','CD9','CAPG','SOX2','PIM2','TVC1D23','UNC5B','DPPA2','MEG3','ASH2L','MSH6','CBFA2T2','MRPS23','USP28','BCOR','VCAN','ETV4','CNIH4','DEPTOR','ABHD12B','NODAL','GPR160','SPRY2','SLC39A10','WARS','ASRGL1',"ESRRB")
-  
-  #Bovineb PE New Preimplantation TOP Modular Genes
-  bPE <- c('UACA','PDGFRA', 'GATA6', 'GATA4', 'COL4A1', 'HNF1B', 'NID2', 'RSPO3', 'APOA1','SOX17','GAPDA', 'FN1', 'LAMB1','LBH', 'KIT', 'FGFR2','GPX2', 'LAMA4', 'LAMA1','BMP2','SERPINH1','P4HA1','EGLN3','ZC3HAV1','BAMBI','GPRC5B', 'MARCKS','HNF4A', 'DUSP1','ALDH2','APOC1','TCEA1','CDC42EP4','PHLDA1','SEPT11','ENO2','SLC4A8','HORMAD2-AS1','ST3GAL1','NDUFAB1','SPARC','SPATS2L','TMBIM1','UQCRH','TPST2','GYPC','RCBTB1','PXDN','TBCA','RAB15','CLDN19','KLHL18','CADM1','FGFR1','UBASH3B','SRGAP1','GSN','CTSE','GSTO1','BRDT','OTX2','LARP6','UQCRHL')
-  
-  #Bovine bTE New Preimplantation TOP Modular Genes
-  bTE <- c('CLDN4','GATA3','GATA2','KRT18','PPIA','CDX2','TEAD4','DAB2','SLC7A2','ABCG2', 'MYC', 'LRP2', 'WNT7A', 'FDGFA', 'FRDM4','KRT8','GRHL2','TACSTD2','MPZL1','PALLD','TACC1','LRRFIP1','RAB11FIP4','RALBP1','PTGES','EMP2','PTN','SH3KBP1','SH2D4A','TEAD1','MGST3','TGFBR3','ODC1','S100A6','JUP','TCF7L2','PRSS8','CEBPA','SLC7A4','ZFHX3','VAMP8','ENTPD1','HIC2','SLC7A5','DLX3','EFNA1','TIGAR','GRHL1','FOLR1','CD55','GAB2','ADK','PPT1','PERP','FHL2','KRT19','TMEM106C',"TMEM54")
-  
-  EPI <- data.frame(gene=bEPI, Annotation="EPI")
-  PE <- data.frame(gene=bPE, Annotation="PE")
-  TE <- data.frame(gene=bTE, Annotation="TE")
-  
-  d1 <- rbind(EPI, PE)
-  d2 <- rbind(d1, TE)
-  
-  all <- data.frame(gene=data, Annotation="UN")
-  all2 <- merge(all, d2, by.x="gene", by.y="gene", all.x=T)
-  all2$Annotation <- ifelse(!is.na(all2$Annotation.y), as.character(all2$Annotation.y), "UN")
-  all2 <- all2[,c(1,4)]
-  row.names(all2) <- all2$gene
-  annogenes <- all2[!duplicated(all2$gene),]
-  
-  return(annogenes)
+  return(g)
 }
 
 ################################################################################
@@ -106,7 +86,8 @@ CategorizeMarkers <- function (data) {
 #        pheatmap parameter TRUE/FALSE for whether to cluster cells
 # Output: heatmap
 ################################################################################
-DrawHeatmap <- function (dat, annotation, expr, markers, show, method, cluster) {
+#library(ComplexHeatmap)
+DrawHeatmap <- function (dat, annotation, expr, show, method, cluster, grp1Lab, grp2Lab) {
   # order cells in expression matrix according to group1
   dat$N -> row.names(dat)
   dat2 <- dat[order(dat$group1),]
@@ -126,11 +107,13 @@ DrawHeatmap <- function (dat, annotation, expr, markers, show, method, cluster) 
   
   # make annotation for columns and rows
   anncol <- data.frame(Group1 = dat$group1, Group2=dat$group2, row.names=row.names(dat))
+  names(anncol)[1] <- grp1Lab
+  names(anncol)[2] <- {if (grp1Lab == grp2Lab) paste0(grp2Lab,"_2") else grp2Lab}
   annrow <- data.frame(Celltype = as.factor(annotation[,2]), row.names = annotation[,1])
   
   out <- pheatmap(expr3, annotation_col = anncol, annotation_row = annrow, color = colorRampPalette(rev(brewer.pal(n = 8, name = "RdYlBu")))(8),
-                  fontsize=14, show_rownames=T, cluster_cols=cluster, cluster_rows=T, scale="none", 
-                  show_colnames=show, cex=1, clustering_distance_rows="euclidean", width = 11, height = 10,
+                  fontsize=13, show_rownames=T, cluster_cols=cluster, cluster_rows=T, scale="none", 
+                  show_colnames=show, clustering_distance_rows="euclidean", 
                   clustering_distance_cols=method, clustering_method="complete", border_color=FALSE)
   return(out)
 }

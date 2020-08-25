@@ -8,11 +8,7 @@ tabItem(tabName = "qcTab",
        box(
          title = "Violin Plot", width = 6,
          uiOutput("rawDataVlnPlot")
-       )#,
-       #box(
-       #  title = "VlnPLot (Filtered)", width = 4,
-       #  uiOutput("filteredDataVlnPlot")
-       #)
+       )
    ),
    fluidRow(
      box(
@@ -23,6 +19,11 @@ tabItem(tabName = "qcTab",
        title = "Scatter (Filtered)", width = 6,
        uiOutput("filteredDataScatter")
      )
+   ),
+   fixedPanel(
+     downloadButton("downloadQC", label = "Download Plots", class = "button-primary", icon = icon("download")),
+     right = 15,
+     bottom = 15
    )
 )
 

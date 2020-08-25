@@ -11,7 +11,7 @@ tabItem(tabName = "geneExpTab",
    fluidRow(
      box(
        width = 12, title="Plot 2",
-       column(4, selectizeInput('geneExpPlot2.genes', 'Genes ID/Name', choices = NULL, multiple = TRUE, options = list(create = TRUE))),
+       column(2, selectizeInput('geneExpPlot2.genes', 'Gene ID/Name', choices = NULL, multiple = TRUE, options = list(create = TRUE))),
        column(2, selectInput("geneExpPlot2.group","Group By:", append(list("None" = "NULL"), GROUP_BY_OPTIONS))),
        column(2, selectInput("geneExpPlot2.type","Type:", DIM_TYPES)),
        column(2, sliderInput("geneExpPlot2.dims", label = "Dimension",  min = 1, max = 4, value = c(1, 2))),
@@ -27,6 +27,11 @@ tabItem(tabName = "geneExpTab",
           ))
        ),
        uiOutput("geneExpPlot2")
+   ),
+   fixedPanel(
+     downloadButton("downloadFeaturePlots", label = "Download Plots", class = "button-primary", icon = icon("download")),
+     right = 15,
+     bottom = 15
    )
 )
 

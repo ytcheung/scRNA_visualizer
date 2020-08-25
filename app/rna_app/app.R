@@ -5,7 +5,16 @@ check.packages <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 
-packages<-c("shiny", "shinydashboard", "shinyjs", "V8","RColorBrewer","ggplot2","gdata","pheatmap")
+packages<-c("shiny", "shinydashboard", "shinyjs", "V8","RColorBrewer","ggplot2","gdata","pheatmap","zip","foreach","DT")#,"Seurat","scater")
 check.packages(packages)
+
+##if (!("ComplexHeatmap" %in% installed.packages()[, "Package"])){
+# if (!requireNamespace("ComplexHeatmap", quietly = TRUE)){
+#   if (!requireNamespace("devtools", quietly = TRUE))
+#     install.packages("devtools")
+#   
+#   library(devtools)
+#   install_github("jokergoo/ComplexHeatmap") #Install latest version from github
+# }
 
 shiny::runApp("~/KI - Science Park/ki_summer/app/rna_app/")

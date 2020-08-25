@@ -1,30 +1,28 @@
+plotListQC <- list() #For batch download (Note: key = plotname = filename)
+
 output$rawDataHisto <- renderUI({
   if(is.null(sce_raw))
     return()
   
+  #Use "<<-" instead of "<-" or "=" for updating local global variable
+  plotListQC[["Histo_Lib_Size"]] <<- plotHisto("Library size (millions)", sce_raw[[COL_LIBSIZE]], 1e6,"")
+  plotListQC[["Histo_Features_Count"]] <<- plotHisto("No. of expressed genes", sce_raw[[COL_FEATURES_COUNT]], 1,"")
+  plotListQC[["Histo_MT_Percent"]] <<- plotHisto("MT %", sce_raw[[COL_MT_PERCENT]], 1,"")
+  
   plot_output_list <- list(
     tabPanel("Lib Size", renderPlot({
-      hist(sce_raw$total/1e6, xlab="Library size(millions)", main="",breaks=50, col="grey80", ylab="No. of cells")
-      abline(v="0.7",col="red")
+      print(plotListQC$Histo_Lib_Size)
     })),
     tabPanel("Features Count",  renderPlot({
-      hist(sce_raw$detected, xlab="No. of expressed genes", main="",breaks=50, col="grey80", ylab="No. of cells")
+      print(plotListQC$Histo_Features_Count)
     })),
     tabPanel("MT %",renderPlot({
-      hist(sce_raw$subsets_mito_percent, xlab="MT %", main="",breaks=50, col="grey80", ylab="No. of cells")
-      abline(v="20",col="red")
+      print(plotListQC$Histo_MT_Percent)
     }))
   )
   
   do.call(tabBox, args = c(width = 12, plot_output_list))
 })
-
-#output$downloadPlot <- downloadHandler(
-#  filename = function(){"test"},
-#  content = function(file){
-#    ggsave(file, plot = g, dpi = 600, useDingbats=FALSE, width = 9, height=8)
-#  }
-#)
 
 output$rawDataVlnPlot <- renderUI({
   if(is.null(sce_raw))
@@ -32,40 +30,37 @@ output$rawDataVlnPlot <- renderUI({
   
   color <- "Dark2"
   pointSize <- 2
+  if (COLOR_DISCARDED){
+    colorLibsize <- I(qc_reasons[[COL_DISCARD_LIBSIZE]])
+    colorFeaturesCount <- I(qc_reasons[[COL_DISCARD_FEATURES_COUNT]])
+    colorMTPercent <- I(qc_reasons[[COL_DISCARD_MT_PERCENT]])
+  } else {
+    colorLibsize <- NULL
+    colorFeaturesCount <- NULL
+    colorMTPercent <- NULL
+  }
   
+  plotListQC[["Vln_Lib_Size"]] <<- 
+    plotVln(LABEL_BATCH,"Library Size",sce_raw[[COL_BATCH]],sce_raw[[COL_LIBSIZE]],NULL,"log10","Drop",colorLibsize,"",pointSize,color)
+  plotListQC[["Vln_Features_Count"]] <<-
+    plotVln(LABEL_BATCH,"Features",sce_raw[[COL_BATCH]],sce_raw[[COL_FEATURES_COUNT]],NULL,"log10","Drop",colorFeaturesCount,"",pointSize,color)
+  plotListQC[["Vln_MT_Percent"]] <<-
+    plotVln(LABEL_BATCH,"MT %",sce_raw[[COL_BATCH]],sce_raw[[COL_MT_PERCENT]],NULL,NULL,"Drop",colorMTPercent,"",pointSize,color)
+    
   plot_output_list <- list(
     tabPanel("Lib Size", renderPlot({
-      plotVln("Experiment","Library Size",sce_raw$Experiment,sce_raw$total,NULL,"log10","Drop",I(qc_reasons@listData[["low_lib_size"]]),"",pointSize,color,"Exp_LibSize")
+      print(plotListQC$Vln_Lib_Size)
     })),
     tabPanel("Features Count",  renderPlot({
-      plotVln("Experiment","Features",sce_raw$Experiment,sce_raw$detected,NULL,"log10","Drop",I(qc_reasons@listData[["low_n_features"]]),"",pointSize,color,"Exp_Features")
+      print(plotListQC$Vln_Features_Count)
     })),
     tabPanel("MT %",renderPlot({
-      plotVln("Experiment","MT %",sce_raw$Experiment,sce_raw$percent.mito,NULL,NULL,"Drop",I(qc_reasons@listData[["high_subsets_mito_percent"]]),"",pointSize,color,"Exp_MtRatio")
+      print(plotListQC$Vln_MT_Percent)
     }))
   )
   
   do.call(tabBox, args = c(width = 12, plot_output_list))
 })
-
-#output$filteredDataVlnPlot <- renderUI({
-#  if(is.null(sce))
-#    return()
-#  
-#  plot_output_list <- list(
-#    tabPanel("Lib Size", plt1 <- renderPlot({
-#      plotColData(sce, x="Experiment", y="total") + scale_y_log10()
-#    })),
-#    tabPanel("Features Count",  renderPlot({
-#      plotColData(sce, x="Experiment", y="detected") + scale_y_log10()
-#    })),
-#    tabPanel("MT %",renderPlot({
-#      plotColData(sce, x="Experiment", y="percent.mito")
-#    }))
-#  )
-#  
-#  do.call(tabBox, args = c(width = 12, plot_output_list))
-#})
 
 output$rawDataScatter <- renderUI({
   if(is.null(sce_raw))
@@ -74,15 +69,22 @@ output$rawDataScatter <- renderUI({
   color <- "Dark2"
   pointSize <- 1.75
   
+  plotListQC[["Scatter_Raw_Feature_LibSize"]] <<-
+    plotScatter("Library Size","Features",sce_raw[[COL_LIBSIZE]],sce_raw[[COL_FEATURES_COUNT]],"log10",NULL,LABEL_BATCH,sce_raw[[COL_BATCH]],"",pointSize,color)
+  plotListQC[["Scatter_Raw_MT_Feature"]] <<-
+    plotScatter("Features","MT%",sce_raw[[COL_FEATURES_COUNT]],sce_raw[[COL_MT_PERCENT]],NULL,NULL,LABEL_BATCH,sce_raw[[COL_BATCH]],"",pointSize,color)
+  plotListQC[["Scatter_Raw_MT_LibSize"]] <<-
+    plotScatter("Library Size","MT%",sce_raw[[COL_LIBSIZE]],sce_raw[[COL_MT_PERCENT]],"log10",NULL,LABEL_BATCH,sce_raw[[COL_BATCH]],"",pointSize,color)
+  
   plot_output_list <- list(
     tabPanel("Feature/Count", plt1 <- renderPlot({
-      plotScatter("Library Size","Features",sce_raw$nCount_RNA,sce_raw$nFeature_RNA,"log10",NULL,"Experiment",sce_raw$Experiment,"",pointSize,color,"Raw_Feature_LibSize")
+      print(plotListQC$Scatter_Raw_Feature_LibSize)
     })),
     tabPanel("MT%/Feature",  renderPlot({
-      plotScatter("Features","MT%",sce_raw$nFeature_RNA,sce_raw$percent.mito,NULL,NULL,"Experiment",sce_raw$Experiment,"",pointSize,color,"Raw_MtRatio_Feature")
+      print(plotListQC$Scatter_Raw_MT_Feature)
     })),
     tabPanel("MT%/Count",renderPlot({
-      plotScatter("Library Size","MT%",sce_raw$nCount_RNA,sce_raw$percent.mito,"log10",NULL,"Experiment",sce_raw$Experiment,"",pointSize,color,"Raw_MtRatio_LibSize")
+      print(plotListQC$Scatter_Raw_MT_LibSize)
     }))
   )
   
@@ -96,17 +98,46 @@ output$filteredDataScatter <- renderUI({
   color <- "Dark2"
   pointSize <- 1.75
   
+  plotListQC[["Scatter_Feature_LibSize"]] <<-
+    plotScatter("Library Size","Features",sce[[COL_LIBSIZE]],sce[[COL_FEATURES_COUNT]],"log10",NULL,LABEL_BATCH,sce[[COL_BATCH]],"",pointSize,color)
+  plotListQC[["Scatter_MT_Feature"]] <<-
+    plotScatter("Features","MT%",sce[[COL_FEATURES_COUNT]],sce[[COL_MT_PERCENT]],NULL,NULL,LABEL_BATCH,sce[[COL_BATCH]],"",pointSize,color)
+  plotListQC[["Scatter_MT_LibSize"]] <<-
+    plotScatter("Library Size","MT%",sce[[COL_LIBSIZE]],sce[[COL_MT_PERCENT]],"log10",NULL,LABEL_BATCH,sce[[COL_BATCH]],"",pointSize,color)
+  
+  
   plot_output_list <- list(
     tabPanel("Feature/Count", plt1 <- renderPlot({
-      plotScatter("Library Size","Features",sce$nCount_RNA,sce$nFeature_RNA,"log10",NULL,"Experiment",sce$Experiment,"",pointSize,color,"FT_Feature_LibSize")
+      print(plotListQC$Scatter_Feature_LibSize)
     })),
     tabPanel("MT%/Feature",  renderPlot({
-      plotScatter("Features","MT%",sce$nFeature_RNA,sce$percent.mito,NULL,NULL,"Experiment",sce$Experiment,"",pointSize,color,"FT_MtRatio_Feature")
+      print(plotListQC$Scatter_MT_Feature)
     })),
     tabPanel("MT%/Count",renderPlot({
-      plotScatter("Library Size","MT%",sce$nCount_RNA,sce$percent.mito,"log10",NULL,"Experiment",sce$Experiment,"",pointSize,color,"FT_MtRatio_LibSize")
+      print(plotListQC$Scatter_MT_LibSize)
     }))
   )
   
   do.call(tabBox, args = c(width = 12, plot_output_list))
 })
+
+
+output$downloadQC = downloadHandler(
+    filename = function() {
+      'QC_Plots.zip'
+    }, 
+    content = function(fname) {
+      fs <- c()
+      setwd(tempdir())
+      
+      foreach(key=names(plotListQC), val=plotListQC, .packages = c("foreach")) %do% {
+        path <- paste0(key, ".pdf")
+        fs <- c(fs, path)
+        ggsave(plot = val, dpi = 600, filename = path, useDingbats=FALSE, width=8, height=6)
+      }
+      
+      zip::zipr(zipfile=fname, files=fs)
+    },
+    contentType = "application/zip"
+)
+

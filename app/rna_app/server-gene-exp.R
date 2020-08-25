@@ -1,3 +1,5 @@
+plotListFeature <- list() #For plot1
+plotListFeature2 <- list() #For plot2 
 
 observeEvent(input$vizGeneExpPlot1,{
   withProgress(message = "Processing , please wait",{
@@ -9,13 +11,14 @@ observeEvent(input$vizGeneExpPlot1,{
     groups <- sce[[input$geneExpPlot1.group]]
     plotType <- input$geneExpPlot1.type
     plotData <- reducedDim(sce, plotType)
+    plotName <- paste0(plotType,dim1,dim2)
     
-    plot <- plotScatter(paste0(plotType," ",dim1),paste0(plotType," ",dim2),
-                        plotData[,dim1],plotData[,dim2],NULL,NULL,input$geneExpPlot1.group,groups,
-                        "",pointSize,color,paste0(plotType,dim1,dim2))
+    plotListFeature[[plotName]] <<- plotScatter(paste0(plotType," ",dim1),paste0(plotType," ",dim2),
+                                                plotData[,dim1],plotData[,dim2],NULL,NULL,input$geneExpPlot1.group,groups,
+                                                "",pointSize,color)
     
     output$geneExpPlot1 <- renderPlot({
-      plot
+      plotListFeature[[plotName]]
     })
   })
 })
@@ -25,15 +28,15 @@ geneExpPlot2_ranges <- reactiveValues(x = NULL, y = NULL)
 observeEvent(input$vizGeneExpPlot2,{
   withProgress(message = "Processing , please wait",{
     
-    gene_list <- searchGenes(gene_info,input$geneExpPlot2.genes,"Gene.ID","Gene.Name")
-  
+    gene_list <- searchGenes(gene_info,input$geneExpPlot2.genes,COL_GENE_ID,COL_GENE_NAME)
+      
     if(nrow(gene_list)==0){
       output$geneExpPlot2 <- renderUI({ 
         span("Genes not found", style="color:red")
       })
       return()
     }
-  
+    
     pointSize <- 2
     
     dim1 <- input$geneExpPlot2.dims[1]
@@ -42,20 +45,22 @@ observeEvent(input$vizGeneExpPlot2,{
     plotType <- input$geneExpPlot2.type
     plotData <- reducedDim(sce, plotType)[,c(dim1,dim2)]
     
-    plotlist <- lapply(1:nrow(gene_list), function(i) {
-      plotScatterFeatures(plotData,exp.matrix[row.names(gene_list)[i],], gene_list$Gene.ID[i], groups, input$geneExpPlot2.group, paste0(plotType,dim1), paste0(plotType,dim2), pointSize, paste0(plotType,dim1,dim2))
-    
-      #plotReducedDim(sce,dimred = input$geneExpPlot2.type, colour_by = rownames(gene_list)[j], ncomponents = input$geneExpPlot2.dims, by_exprs_values = "logcounts") +
-      #    ggtitle(label = gene_list$Gene.Name[j])
+    plotListFeature2 <<- list() 
+    lapply(1:nrow(gene_list), function(i) {
+      plotName <- paste0(plotType,dim1,dim2,"_",gene_list$Gene.Name[i],"_",gene_list$Gene.ID[i])
+      plotListFeature2[[plotName]] <<- plotScatterFeatures(plotData,exp.matrix[row.names(gene_list)[i],], gene_list$Gene.Name[i],
+                                                          groups, input$geneExpPlot2.group, paste0(plotType,dim1), 
+                                                          paste0(plotType,dim2), pointSize)
     })
     
     output$geneExpPlot2 <- renderUI({
       lapply(1:nrow(gene_list), function(i) {
         output[[paste0("p",i)]] <- renderPlot({
-          plotlist[[i]]+coord_cartesian(xlim = geneExpPlot2_ranges$x, ylim = geneExpPlot2_ranges$y)
+          plotListFeature2[[i]] <<- plotListFeature2[[i]]+coord_cartesian(xlim = geneExpPlot2_ranges$x, ylim = geneExpPlot2_ranges$y)
+          plotListFeature2[[i]]
         })
         
-        box(title = paste0("Plot2 - ", gene_list$Gene.Name[i]), 
+        box(title = tags$a(href=paste0(ENSEMBL_LINK,gene_list$Gene.ID[i]), paste0("Plot2 - ", gene_list$Gene.ID[i])), 
             plotOutput(paste0("p",i))
         )
       })
@@ -83,3 +88,26 @@ observeEvent(input$geneExpPlot1.type,{
 observeEvent(input$geneExpPlot2.type,{
   updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot2.type)),4))
 })
+
+output$downloadFeaturePlots = downloadHandler(
+  filename = function() {
+      'Feature_Plots.zip'
+  },
+  content = function(fname) {
+      combined_list <- list()
+      combined_list <- append(combined_list, plotListFeature)
+      combined_list <- append(combined_list, plotListFeature2)
+    
+      fs <- c()
+      setwd(tempdir())
+
+      foreach(key=names(combined_list), val=combined_list, .packages = c("foreach")) %do% {
+        path <- paste0(key, ".pdf")
+        fs <- c(fs, path)
+        ggsave(plot = val, dpi = 600, filename = path, useDingbats=FALSE, width=8, height=6)
+      }
+
+      zip::zipr(zipfile=fname, files=fs)
+  }
+)
+
