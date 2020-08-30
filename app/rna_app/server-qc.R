@@ -4,7 +4,7 @@ output$rawDataHisto <- renderUI({
   if(is.null(sce_raw))
     return()
   
-  #Use "<<-" instead of "<-" or "=" for updating local global variable
+  #Use "<<-" instead of "<-" or "=" for updating global variables
   plotListQC[["Histo_Lib_Size"]] <<- plotHisto("Library size (millions)", sce_raw[[COL_LIBSIZE]], 1e6,"")
   plotListQC[["Histo_Features_Count"]] <<- plotHisto("No. of expressed genes", sce_raw[[COL_FEATURES_COUNT]], 1,"")
   plotListQC[["Histo_MT_Percent"]] <<- plotHisto("MT %", sce_raw[[COL_MT_PERCENT]], 1,"")
@@ -41,11 +41,11 @@ output$rawDataVlnPlot <- renderUI({
   }
   
   plotListQC[["Vln_Lib_Size"]] <<- 
-    plotVln(LABEL_BATCH,"Library Size",sce_raw[[COL_BATCH]],sce_raw[[COL_LIBSIZE]],NULL,"log10","Drop",colorLibsize,"",pointSize,color)
+    plotVln(LABEL_BATCH,"Library Size",sce_raw[[COL_BATCH]],sce_raw[[COL_LIBSIZE]],NULL,"log10","Filtered",colorLibsize,"",pointSize,color)
   plotListQC[["Vln_Features_Count"]] <<-
-    plotVln(LABEL_BATCH,"Features",sce_raw[[COL_BATCH]],sce_raw[[COL_FEATURES_COUNT]],NULL,"log10","Drop",colorFeaturesCount,"",pointSize,color)
+    plotVln(LABEL_BATCH,"Features",sce_raw[[COL_BATCH]],sce_raw[[COL_FEATURES_COUNT]],NULL,"log10","Filtered",colorFeaturesCount,"",pointSize,color)
   plotListQC[["Vln_MT_Percent"]] <<-
-    plotVln(LABEL_BATCH,"MT %",sce_raw[[COL_BATCH]],sce_raw[[COL_MT_PERCENT]],NULL,NULL,"Drop",colorMTPercent,"",pointSize,color)
+    plotVln(LABEL_BATCH,"MT %",sce_raw[[COL_BATCH]],sce_raw[[COL_MT_PERCENT]],NULL,NULL,"Filtered",colorMTPercent,"",pointSize,color)
     
   plot_output_list <- list(
     tabPanel("Lib Size", renderPlot({

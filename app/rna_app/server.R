@@ -14,7 +14,7 @@ server <- function(input, output, session) {
     exp.matrix <- sce@assays@data@listData[["logcounts"]]
     
     #List of dim reduction results. key = reduction type, e.g. reducedDim.df$PCA = PCA results 
-    reducedDim.results <- reducedDims(sce) 
+    reducedDim.results <- reducedDims(sce) #cow_sct@reductions
     
     source("plotFunctions.R")
     source("commonFunctions.R")
@@ -26,7 +26,6 @@ server <- function(input, output, session) {
     source("server-de.R",local = TRUE)
     
     GotoTab <- function(name){
-        
         shinyjs::show(selector = paste0("a[data-value=\"",name,"\"]"))
         
         shinyjs::runjs("window.scrollTo(0, 0)")

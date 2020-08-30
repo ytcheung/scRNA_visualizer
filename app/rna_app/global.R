@@ -1,6 +1,6 @@
 ## Global Variables for both UI and Server
 
-ENSEMBL_LINK <- "https://asia.ensembl.org/Multi/Search/Results?q="
+ENSEMBL_LINK <- "https://www.ensembl.org/Bos_taurus/Gene/Summary?g=" #"https://asia.ensembl.org/Multi/Search/Results?q="
 
 GROUP_BY_OPTIONS <- list("Cell Type" = "Cell_type", "Cluster" = "seurat_clusters", 
                          "Days" = "Days", "Days & Type" = "Days_Type", "Experiment" = "Experiment")
@@ -29,6 +29,8 @@ COL_DISCARD_MT_PERCENT <- "high_subsets_mito_percent"
 ########################
 ## DE Settings ##
 ########################
+COL_DE_DT_HIDE <- c(1) #Hide column(s) of DE results table
 COL_DE_LOG_FC <- "avg_logFC"
-COL_DE_P_VAL <- "p_val"
+COL_DE_P_VAL <- "p_val_adj" #For sorting
 COL_DE_GENE_NAME <- "gene"
+COL_DE_CLUSTER <- "cluster"

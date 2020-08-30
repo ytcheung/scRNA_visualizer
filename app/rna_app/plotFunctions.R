@@ -30,6 +30,7 @@ plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, p
     {if(!is.null(yScale))scale_y_continuous(trans = yScale)} + 
     scale_color_brewer(palette=palette,name=Grlab) +
     theme_bw(base_size=15) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
     xlab(xlab) +
     ylab(ylab) +
     ggtitle(title) 
@@ -77,18 +78,8 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grp
   return(g)
 }
 
-################################################################################
-# Draw Heatmap
-
-# Input: data frame for clustering and grouping of cells, data frame for annotation of marker genes,
-#        expression matrix including only chosen markers, vector of chosen markers,
-#        pheatmap parameter TRUE/FALSE for whether to show column names, clustering method for cells, 
-#        pheatmap parameter TRUE/FALSE for whether to cluster cells
-# Output: heatmap
-################################################################################
 #library(ComplexHeatmap)
-DrawHeatmap <- function (dat, annotation, expr, show, method, cluster, grp1Lab, grp2Lab) {
-  # order cells in expression matrix according to group1
+DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, cluster_gene_method, grp1Lab, grp2Lab) {
   dat$N -> row.names(dat)
   dat2 <- dat[order(dat$group1),]
   expr1 <- expr[,row.names(dat2)]
@@ -106,14 +97,21 @@ DrawHeatmap <- function (dat, annotation, expr, show, method, cluster, grp1Lab, 
   expr3[is.na(expr3)] <- 0
   
   # make annotation for columns and rows
-  anncol <- data.frame(Group1 = dat$group1, Group2=dat$group2, row.names=row.names(dat))
+  anncol <- data.frame(Group1 = dat$group1, row.names=row.names(dat))
   names(anncol)[1] <- grp1Lab
-  names(anncol)[2] <- {if (grp1Lab == grp2Lab) paste0(grp2Lab,"_2") else grp2Lab}
-  annrow <- data.frame(Celltype = as.factor(annotation[,2]), row.names = annotation[,1])
+  if (length(dat$group2)>0){
+    anncol[["Group2"]] =dat$group2
+    names(anncol)[2] <- {if (grp1Lab == grp2Lab) paste0(grp2Lab,"_2") else grp2Lab}
+  }
+  #annrow <- data.frame(Annotation = as.factor(annotation[,2]), row.names = annotation[,1])
   
-  out <- pheatmap(expr3, annotation_col = anncol, annotation_row = annrow, color = colorRampPalette(rev(brewer.pal(n = 8, name = "RdYlBu")))(8),
-                  fontsize=13, show_rownames=T, cluster_cols=cluster, cluster_rows=T, scale="none", 
-                  show_colnames=show, clustering_distance_rows="euclidean", 
-                  clustering_distance_cols=method, clustering_method="complete", border_color=FALSE)
+  cluster_cell <- ifelse(is.null(cluster_cell_method),F,T)
+  cluster_gene <- ifelse(is.null(cluster_gene_method),F,T)
+  
+  out <- pheatmap(expr3, annotation_col = anncol, annotation_row = annotation, color = colorRampPalette(rev(brewer.pal(n = 8, name = "RdYlBu")))(8),
+                  fontsize=13, show_rownames=T, scale="none", show_colnames=show,  
+                  cluster_cols=cluster_cell, clustering_distance_cols=cluster_cell_method, 
+                  cluster_rows=cluster_gene, clustering_distance_rows=cluster_gene_method,
+                  clustering_method="complete", border_color=FALSE, cellheight = 20)
   return(out)
 }

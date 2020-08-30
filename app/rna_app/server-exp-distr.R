@@ -2,6 +2,8 @@ plotListExpDistr <- list()
 plotListExpDistr[["expDistrPlot1"]] <- list()
 plotListExpDistr[["expDistrPlot2"]] <- list()
 
+updateSelectizeInput(session, "expDistrPlot.genes", choices = sort(gene_info[[COL_GENE_NAME]]), server = TRUE)
+
 observeEvent(input$vizExpDistrPlot,{
   withProgress(message = "Processing , please wait",{
     

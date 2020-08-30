@@ -1,12 +1,3 @@
-require(shinydashboard)
-require(shinyjs)
-require(shiny)
-require(V8)
-require(DT)
-
-#require(Seurat)
-#require(scater)
-
 ui <- tagList(
     dashboardPage(
         skin = "purple",

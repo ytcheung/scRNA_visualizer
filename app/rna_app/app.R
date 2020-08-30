@@ -5,7 +5,22 @@ check.packages <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 
-packages<-c("shiny", "shinydashboard", "shinyjs", "V8","RColorBrewer","ggplot2","gdata","pheatmap","zip","foreach","DT")#,"Seurat","scater")
+packages<-c("shiny", "shinydashboard", "shinyjs", "V8","RColorBrewer","ggplot2","gdata",
+            "pheatmap","zip","foreach","DT","dplyr","gtable","grid","data.table")
+
+#If the dataset is SCE
+if (!requireNamespace("BiocManager", quietly = TRUE)){
+  install.packages("BiocManager")
+  nr
+  if (!requireNamespace("SingleCellExperiment", quietly = TRUE))
+    BiocManager::install("SingleCellExperiment")
+  
+  library(SingleCellExperiment)
+}
+
+#If the dataset is Seurat object
+#packages<-c(packages,"Seurat")
+
 check.packages(packages)
 
 ##if (!("ComplexHeatmap" %in% installed.packages()[, "Package"])){

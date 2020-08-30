@@ -1,6 +1,8 @@
 plotListFeature <- list() #For plot1
 plotListFeature2 <- list() #For plot2 
 
+updateSelectizeInput(session, "geneExpPlot2.genes", choices = sort(gene_info[[COL_GENE_NAME]]), server = TRUE)
+
 observeEvent(input$vizGeneExpPlot1,{
   withProgress(message = "Processing , please wait",{
     color <- "Dark2"
@@ -20,6 +22,9 @@ observeEvent(input$vizGeneExpPlot1,{
     output$geneExpPlot1 <- renderPlot({
       plotListFeature[[plotName]]
     })
+    
+    output$geneExpPlot2 <- renderUI({})
+    plotListFeature2 <<- list() 
   })
 })
 
@@ -27,7 +32,7 @@ geneExpPlot2_ranges <- reactiveValues(x = NULL, y = NULL)
 
 observeEvent(input$vizGeneExpPlot2,{
   withProgress(message = "Processing , please wait",{
-    
+
     gene_list <- searchGenes(gene_info,input$geneExpPlot2.genes,COL_GENE_ID,COL_GENE_NAME)
       
     if(nrow(gene_list)==0){
@@ -39,10 +44,10 @@ observeEvent(input$vizGeneExpPlot2,{
     
     pointSize <- 2
     
-    dim1 <- input$geneExpPlot2.dims[1]
-    dim2 <-  tail(input$geneExpPlot2.dims, n=1)
+    dim1 <- input$geneExpPlot1.dims[1]
+    dim2 <-  tail(input$geneExpPlot1.dims, n=1)
     groups <- if(input$geneExpPlot2.group == "NULL") NULL else {sce[[input$geneExpPlot2.group]]}
-    plotType <- input$geneExpPlot2.type
+    plotType <- input$geneExpPlot1.type
     plotData <- reducedDim(sce, plotType)[,c(dim1,dim2)]
     
     plotListFeature2 <<- list() 
@@ -85,9 +90,9 @@ observeEvent(input$geneExpPlot1.type,{
   updateSliderInput(session, "geneExpPlot1.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot1.type)),4))
 })
 
-observeEvent(input$geneExpPlot2.type,{
-  updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot2.type)),4))
-})
+# observeEvent(input$geneExpPlot2.type,{
+#   updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot2.type)),4))
+# })
 
 output$downloadFeaturePlots = downloadHandler(
   filename = function() {
