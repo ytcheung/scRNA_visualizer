@@ -2,12 +2,14 @@
 
 ENSEMBL_LINK <- "https://www.ensembl.org/Bos_taurus/Gene/Summary?g=" #"https://asia.ensembl.org/Multi/Search/Results?q="
 
-GROUP_BY_OPTIONS <- list("Cell Type" = "Cell_type", "Cluster" = "seurat_clusters", 
+COL_CLUSTER <- "seurat_clusters"
+
+GROUP_BY_OPTIONS <- list("Cell Type" = "Cell_type", "Cluster" = COL_CLUSTER, 
                          "Days" = "Days", "Days & Type" = "Days_Type", "Experiment" = "Experiment")
 
 DIM_TYPES <- list("PCA" = "PCA", "UMAP" = "UMAP", "TSNE" = "TSNE")
 
-#Column name in gene_info
+#Column names of gene_info
 COL_GENE_NAME <- "Gene.Name"
 COL_GENE_ID <- "Gene.ID"
 COL_GENE_ANNO <- "Annotation"
@@ -30,7 +32,9 @@ COL_DISCARD_MT_PERCENT <- "high_subsets_mito_percent"
 ## DE Settings ##
 ########################
 COL_DE_DT_HIDE <- c(1) #Hide column(s) of DE results table
-COL_DE_LOG_FC <- "avg_logFC"
-COL_DE_P_VAL <- "p_val_adj" #For sorting
+
+#Column names of de
+COL_DE_LOG_FC <- "avg_logFC" #For filtering
+COL_DE_P_VAL <- "p_val_adj" #For filtering
 COL_DE_GENE_NAME <- "gene"
 COL_DE_CLUSTER <- "cluster"

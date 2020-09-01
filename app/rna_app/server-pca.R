@@ -41,7 +41,7 @@ observeEvent(input$vizPlot,{
 })
 
 observeEvent(input$plot.type,{
-    updateSliderInput(session, "plot.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$plot.type)),4))
+    updateSliderInput(session, "plot.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$plot.type]]),4))
 })
 
 output$downloadReduced = downloadHandler(

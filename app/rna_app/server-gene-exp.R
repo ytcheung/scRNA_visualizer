@@ -12,7 +12,7 @@ observeEvent(input$vizGeneExpPlot1,{
     dim2 <-  tail(input$geneExpPlot1.dims, n=1)
     groups <- sce[[input$geneExpPlot1.group]]
     plotType <- input$geneExpPlot1.type
-    plotData <- reducedDim(sce, plotType)
+    plotData <- reducedDim.results[[plotType]]
     plotName <- paste0(plotType,dim1,dim2)
     
     plotListFeature[[plotName]] <<- plotScatter(paste0(plotType," ",dim1),paste0(plotType," ",dim2),
@@ -48,7 +48,7 @@ observeEvent(input$vizGeneExpPlot2,{
     dim2 <-  tail(input$geneExpPlot1.dims, n=1)
     groups <- if(input$geneExpPlot2.group == "NULL") NULL else {sce[[input$geneExpPlot2.group]]}
     plotType <- input$geneExpPlot1.type
-    plotData <- reducedDim(sce, plotType)[,c(dim1,dim2)]
+    plotData <- reducedDim.results[[plotType]][,c(dim1,dim2)]
     
     plotListFeature2 <<- list() 
     lapply(1:nrow(gene_list), function(i) {
@@ -87,11 +87,11 @@ observe({
 })
 
 observeEvent(input$geneExpPlot1.type,{
-  updateSliderInput(session, "geneExpPlot1.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot1.type)),4))
+  updateSliderInput(session, "geneExpPlot1.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$geneExpPlot1.type]]),4))
 })
 
 # observeEvent(input$geneExpPlot2.type,{
-#   updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim(sce,input$geneExpPlot2.type)),4))
+#   updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$geneExpPlot2.type]]),4))
 # })
 
 output$downloadFeaturePlots = downloadHandler(

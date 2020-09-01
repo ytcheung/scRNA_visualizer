@@ -2,7 +2,6 @@ plotDE <- list()
 plotDE_pdf_height <- 0
 
 updateSelectizeInput(session, "dePlot.genes", choices = sort(unique(de[[COL_DE_GENE_NAME]])), server = TRUE)
-#updateSelectInput(session, "dePlot.cluster", choices = append(list("All"),sort(unique(de[[COL_DE_CLUSTER]]))))
 
 observeEvent(input$vizDePlot,{
   withProgress(message = "Processing , please wait",{
@@ -26,11 +25,30 @@ observeEvent(input$vizDePlot,{
       plotName <- paste0(plotName,"_Downregulated")
     }
     
-    #Sorting
-    if (input$dePlot.orderBy == COL_DE_LOG_FC)
-      de_list <- de_list[order(-abs(de_list[[input$dePlot.orderBy]])),] #Sort by absolute value
+    #Filter by p value and logFoldChange
+    de_list <- de_list %>% filter(!!rlang::sym(COL_DE_P_VAL) < input$deplot.pvalue)
+    if (input$deplot.foldChangeSymbol == ">")
+      de_list <- de_list %>% filter(abs(!!rlang::sym(COL_DE_LOG_FC)) > log2(input$deplot.foldChange))
     else
-      de_list <- de_list[order(de_list[[input$dePlot.orderBy]]),]
+      de_list <- de_list %>% filter(abs(!!rlang::sym(COL_DE_LOG_FC)) < log2(input$deplot.foldChange))
+    
+    #Subset
+    subsetType <- input$dePlot_subsetType
+    if(subsetType != "NULL"){
+      # Remove records in de list
+      if(subsetType == COL_CLUSTER){
+        de_list <- de_list %>% filter(!!rlang::sym(COL_DE_CLUSTER) %in% input$dePlot.subset)
+      }
+      
+      exp.matrix <- exp.matrix[,sce[[input$dePlot_subsetType]] %in% input$dePlot.subset]
+    }
+    
+    #Sorting
+    de_list <- de_list[order(-abs(de_list[[COL_DE_LOG_FC]])),]
+    # if (input$dePlot.orderBy == COL_DE_LOG_FC)
+    #   de_list <- de_list[order(-abs(de_list[[input$dePlot.orderBy]])),] #Sort by absolute value
+    # else
+    #   de_list <- de_list[order(de_list[[input$dePlot.orderBy]]),]
     
     #Remove duplicates after sorting
     de_list <- de_list[!duplicated(de_list[[COL_DE_GENE_NAME]]),]
@@ -99,6 +117,15 @@ observeEvent(input$vizDePlot,{
       )
     })
   })
+})
+
+observeEvent(input$dePlot_subsetType,{
+  group <- input$dePlot_subsetType
+  if (group != "NULL"){
+    withProgress(message = "Processing , please wait",{
+    updateSelectizeInput(session, "dePlot.subset", choices = sort(unique(sce[[group]])))
+    })
+  }
 })
 
 output$downloadDEHeatmap = downloadHandler(

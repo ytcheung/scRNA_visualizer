@@ -81,11 +81,11 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grp
 #library(ComplexHeatmap)
 DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, cluster_gene_method, grp1Lab, grp2Lab) {
   dat$N -> row.names(dat)
-  dat2 <- dat[order(dat$group1),]
-  expr1 <- expr[,row.names(dat2)]
+  # dat2 <- dat[order(dat$group1),]
+  # expr1 <- expr[,row.names(dat2)]
   
   # calculate Z scores for rows of expression matrix
-  expr2 <- t(scale(t(expr1), center = TRUE, scale = TRUE))
+  expr2 <- t(scale(t(expr), center = TRUE, scale = TRUE))
   # problem - missing or zero values not missing/zero after scaling
   
   fun <- function(x) {

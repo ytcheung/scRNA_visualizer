@@ -11,15 +11,11 @@ packages<-c("shiny", "shinydashboard", "shinyjs", "V8","RColorBrewer","ggplot2",
 #If the dataset is SCE
 if (!requireNamespace("BiocManager", quietly = TRUE)){
   install.packages("BiocManager")
-  nr
   if (!requireNamespace("SingleCellExperiment", quietly = TRUE))
     BiocManager::install("SingleCellExperiment")
   
   library(SingleCellExperiment)
 }
-
-#If the dataset is Seurat object
-#packages<-c(packages,"Seurat")
 
 check.packages(packages)
 

@@ -14,7 +14,7 @@ server <- function(input, output, session) {
     exp.matrix <- sce@assays@data@listData[["logcounts"]]
     
     #List of dim reduction results. key = reduction type, e.g. reducedDim.df$PCA = PCA results 
-    reducedDim.results <- reducedDims(sce) #cow_sct@reductions
+    reducedDim.results <- reducedDims(sce) 
     
     source("plotFunctions.R")
     source("commonFunctions.R")
