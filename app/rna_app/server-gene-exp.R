@@ -8,8 +8,8 @@ observeEvent(input$vizGeneExpPlot1,{
     color <- "Dark2"
     pointSize <- 1.75
     
-    dim1 <- input$geneExpPlot1.dims[1]
-    dim2 <-  tail(input$geneExpPlot1.dims, n=1)
+    dim1 <- 1 #input$geneExpPlot1.dims[1]
+    dim2 <-  2 #tail(input$geneExpPlot1.dims, n=1)
     groups <- sce[[input$geneExpPlot1.group]]
     plotType <- input$geneExpPlot1.type
     plotData <- reducedDim.results[[plotType]]
@@ -33,8 +33,8 @@ geneExpPlot2_ranges <- reactiveValues(x = NULL, y = NULL)
 observeEvent(input$vizGeneExpPlot2,{
   withProgress(message = "Processing , please wait",{
 
-    gene_list <- searchGenes(gene_info,input$geneExpPlot2.genes,COL_GENE_ID,COL_GENE_NAME)
-      
+    gene_list <- searchGenes(gene_info,input$geneExpPlot2.genes)
+    
     if(nrow(gene_list)==0){
       output$geneExpPlot2 <- renderUI({ 
         span("Genes not found", style="color:red")
@@ -44,16 +44,16 @@ observeEvent(input$vizGeneExpPlot2,{
     
     pointSize <- 2
     
-    dim1 <- input$geneExpPlot1.dims[1]
-    dim2 <-  tail(input$geneExpPlot1.dims, n=1)
+    dim1 <- 1 #input$geneExpPlot1.dims[1]
+    dim2 <-  2 #tail(input$geneExpPlot1.dims, n=1)
     groups <- if(input$geneExpPlot2.group == "NULL") NULL else {sce[[input$geneExpPlot2.group]]}
     plotType <- input$geneExpPlot1.type
     plotData <- reducedDim.results[[plotType]][,c(dim1,dim2)]
     
     plotListFeature2 <<- list() 
     lapply(1:nrow(gene_list), function(i) {
-      plotName <- paste0(plotType,dim1,dim2,"_",gene_list$Gene.Name[i],"_",gene_list$Gene.ID[i])
-      plotListFeature2[[plotName]] <<- plotScatterFeatures(plotData,exp.matrix[row.names(gene_list)[i],], gene_list$Gene.Name[i],
+      plotName <- paste0(plotType,dim1,dim2,"_",gene_list[[COL_GENE_NAME]][i])
+      plotListFeature2[[plotName]] <<- plotScatterFeatures(plotData,unlist(exp.matrix[row.names(gene_list)[i],]), gene_list[[COL_GENE_NAME]][i],
                                                           groups, input$geneExpPlot2.group, paste0(plotType,dim1), 
                                                           paste0(plotType,dim2), pointSize)
     })
@@ -65,7 +65,7 @@ observeEvent(input$vizGeneExpPlot2,{
           plotListFeature2[[i]]
         })
         
-        box(title = tags$a(href=paste0(ENSEMBL_LINK,gene_list$Gene.ID[i]), paste0("Plot2 - ", gene_list$Gene.ID[i])), 
+        box(title = tags$a(href=paste0(ENSEMBL_LINK,gene_list[[COL_GENE_NAME]][i]), paste0("Plot2 - ", gene_list[[COL_GENE_NAME]][i])), 
             plotOutput(paste0("p",i))
         )
       })
@@ -86,9 +86,9 @@ observe({
   }
 })
 
-observeEvent(input$geneExpPlot1.type,{
-  updateSliderInput(session, "geneExpPlot1.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$geneExpPlot1.type]]),4))
-})
+#observeEvent(input$geneExpPlot1.type,{
+ # updateSliderInput(session, "geneExpPlot1.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$geneExpPlot1.type]]),4))
+#})
 
 # observeEvent(input$geneExpPlot2.type,{
 #   updateSliderInput(session, "geneExpPlot2.dims", label = "Dimension",  min = 1, max = min(ncol(reducedDim.results[[input$geneExpPlot2.type]]),4))

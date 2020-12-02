@@ -1,12 +1,15 @@
-searchGenes <- function(genes,keywords,id_fields,name_fields){
+searchGenes <- function(genes,keywords){
   keywords <- toupper(keywords)
   
   #Row names with "_" in "genes" were replaced by "-"
   keywords2 <- keywords[grep("-", keywords)]
   keywords2 <- gsub('-', '_', keywords2)
   
-  results <- (toupper(genes[[id_fields]]) %in% keywords | toupper(genes[[name_fields]]) %in% keywords |
-                toupper(genes[[id_fields]]) %in% keywords2 | toupper(genes[[name_fields]]) %in% keywords2)
+  results <- (toupper(genes[[COL_GENE_NAME]]) %in% keywords | toupper(genes[[COL_GENE_NAME]]) %in% keywords2)
+  
+  if(COL_GENE_ID != "")
+    results <- (toupper(genes[[COL_GENE_ID]]) %in% keywords | toupper(genes[[COL_GENE_ID]]) %in% keywords2 | results)
+  
   gene_list <- genes[results,]
   
   searchGenes <- gene_list

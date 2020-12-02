@@ -1,18 +1,19 @@
 ## Global Variables for both UI and Server
 
-ENSEMBL_LINK <- "https://www.ensembl.org/Bos_taurus/Gene/Summary?g=" #"https://asia.ensembl.org/Multi/Search/Results?q="
+ENSEMBL_LINK <- "https://www.ensembl.org/Homo_sapiens/Gene/Summary?g="
 
-COL_CLUSTER <- "seurat_clusters"
+COL_CLUSTER <- "Cluster"
+COL_EXPRESSION <- "exp"
+COL_REDUCED_DIMS <- "reducedDims"
 
-GROUP_BY_OPTIONS <- list("Cell Type" = "Cell_type", "Cluster" = COL_CLUSTER, 
-                         "Days" = "Days", "Days & Type" = "Days_Type", "Experiment" = "Experiment")
+GROUP_BY_OPTIONS <- list("Sample Type" = "Type", "Cluster" = COL_CLUSTER) #The values must match the column names in sce
 
-DIM_TYPES <- list("PCA" = "PCA", "UMAP" = "UMAP", "TSNE" = "TSNE")
+DIM_TYPES <- list("TSNE" = "TSNE") #list("PCA" = "PCA", "UMAP" = "UMAP", "TSNE" = "TSNE")
 
 #Column names of gene_info
 COL_GENE_NAME <- "Gene.Name"
-COL_GENE_ID <- "Gene.ID"
-COL_GENE_ANNO <- "Annotation"
+COL_GENE_ID <- "" #"Gene.ID" #Optional, used for the search function and the link to ensembl
+COL_GENE_ANNO <- "" #"Annotation"
 
 ########################
 ## QC Plots Settings ##
@@ -31,10 +32,10 @@ COL_DISCARD_MT_PERCENT <- "high_subsets_mito_percent"
 ########################
 ## DE Settings ##
 ########################
-COL_DE_DT_HIDE <- c(1) #Hide column(s) of DE results table
+COL_DE_DT_HIDE <- c() #Hide column(s) of DE results table
 
 #Column names of de
-COL_DE_LOG_FC <- "avg_logFC" #For filtering
+COL_DE_LOG_FC <- "logFC" #For filtering
 COL_DE_P_VAL <- "p_val_adj" #For filtering
-COL_DE_GENE_NAME <- "gene"
+COL_DE_GENE_NAME <- "Gene"
 COL_DE_CLUSTER <- "cluster"

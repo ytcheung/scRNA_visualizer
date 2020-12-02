@@ -3,10 +3,12 @@ tabItem(tabName = "deTab",
      box(
        width = 12,
        fluidRow(
-         column(4, selectInput("dePlot_geneData","Marker Genes", list("Upregulated" = "up", "Up + Down Regulated" = "up_and_down",
-                                                                              "Downregulated" = "down","Custom" = "custom"))),
+         #column(4, selectInput("dePlot_geneData","Marker Genes", list("Upregulated" = "up", "Up + Down Regulated" = "up_and_down",
+         #                                                                     "Downregulated" = "down","Custom" = "custom"))),
+         column(4, selectInput("dePlot_geneData","Marker Genes", list("Upregulated" = "up","Custom" = "custom"))), 
+          
          conditionalPanel(condition="input.dePlot_geneData == 'custom'",
-                          column(4, selectizeInput('dePlot.genes', 'Gene ID/Name', choices = NULL, multiple = TRUE, 
+                          column(4, selectizeInput('dePlot.genes', 'Gene Name', choices = NULL, multiple = TRUE, 
                                                    options = list(openOnFocus = FALSE, maxOptions = 10)), server = TRUE)),
          conditionalPanel(condition="input.dePlot_geneData != 'custom'",
                           column(4, sliderInput("dePlot.geneCount", "No. of gene per cluster", min = 1, max = 30, value = 10)))

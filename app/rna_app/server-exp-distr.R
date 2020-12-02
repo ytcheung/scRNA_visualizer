@@ -7,7 +7,7 @@ updateSelectizeInput(session, "expDistrPlot.genes", choices = sort(gene_info[[CO
 observeEvent(input$vizExpDistrPlot,{
   withProgress(message = "Processing , please wait",{
     
-    gene_list <- searchGenes(gene_info,input$expDistrPlot.genes,COL_GENE_ID,COL_GENE_NAME)
+    gene_list <- searchGenes(gene_info,input$expDistrPlot.genes)
     
     if(nrow(gene_list)==0)
       return()
@@ -25,15 +25,15 @@ observeEvent(input$vizExpDistrPlot,{
     
     plotList <- list()
     lapply(1:nrow(gene_list), function(i) {
-      plotName <- paste0(plotName_prefix,gene_list$Gene.Name[i],"_",gene_list$Gene.ID[i])
+      plotName <- paste0(plotName_prefix,gene_list[[COL_GENE_NAME]][i]) #,"_",gene_list[[COL_GENE_ID]][i])
       plotList[[plotName]] <<- plotVln(input$expDistrPlot.groupBy,"Expression(logcounts)",sce[[input$expDistrPlot.groupBy]],
-                                exp.matrix[row.names(gene_list)[i],],NULL,NULL,colourBy,groups,"",pointSize,color)
+                                unlist(exp.matrix[row.names(gene_list)[i],]),NULL,NULL,colourBy,groups,"",pointSize,color)
     })
     plotListExpDistr[[input$expDistrPlot.id]] <<- plotList
     
     output[[input$expDistrPlot.id]] <- renderUI({
       lapply(1:nrow(gene_list), function(i) {
-        box(title = tags$a(href=paste0(ENSEMBL_LINK,gene_list$Gene.ID[i]), paste0(gene_list$Gene.Name[i],"(",gene_list$Gene.ID[i],")"))  , width = 12,
+        box(title = tags$a(href=paste0(ENSEMBL_LINK,gene_list[[COL_GENE_NAME]][i]), gene_list[[COL_GENE_NAME]][i]), width = 12,
           renderPlot(plotList[[i]])
         )
       })

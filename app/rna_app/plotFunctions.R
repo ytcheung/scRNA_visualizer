@@ -1,7 +1,3 @@
-library(RColorBrewer)
-library(ggplot2)
-library(gdata)
-
 plotHisto <- function(xlab,xVar,xScale,title){
   df <- data.frame(varX=xVar/xScale)
   
@@ -62,7 +58,7 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grp
     df <- data.frame(coordinate.matrix, Exp = exp.matrix)
     g <- ggplot(df, aes(x = df[,1], y = df[,2])) 
   }
-
+  
   g <- g +
     geom_point(mapping = aes(colour = Exp), size = point.size) +
     scale_colour_gradient2(low = "gray", mid = "yellow", high = "red3", 
@@ -98,17 +94,19 @@ DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, clust
   
   # make annotation for columns and rows
   anncol <- data.frame(Group1 = dat$group1, row.names=row.names(dat))
+  ann_color <- NA
   names(anncol)[1] <- grp1Lab
   if (length(dat$group2)>0){
-    anncol[["Group2"]] =dat$group2
+    anncol[["Group2"]] = dat$group2
     names(anncol)[2] <- {if (grp1Lab == grp2Lab) paste0(grp2Lab,"_2") else grp2Lab}
   }
+  
   #annrow <- data.frame(Annotation = as.factor(annotation[,2]), row.names = annotation[,1])
   
   cluster_cell <- ifelse(is.null(cluster_cell_method),F,T)
   cluster_gene <- ifelse(is.null(cluster_gene_method),F,T)
   
-  out <- pheatmap(expr3, annotation_col = anncol, annotation_row = annotation, color = colorRampPalette(rev(brewer.pal(n = 8, name = "RdYlBu")))(8),
+  out <- pheatmap(expr3, annotation_col = anncol, annotation_row = annotation, color = colorRampPalette(rev(brewer.pal(n = 10, name = "RdYlBu")))(10),
                   fontsize=13, show_rownames=T, scale="none", show_colnames=show,  
                   cluster_cols=cluster_cell, clustering_distance_cols=cluster_cell_method, 
                   cluster_rows=cluster_gene, clustering_distance_rows=cluster_gene_method,
