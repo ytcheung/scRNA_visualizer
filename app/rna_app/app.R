@@ -27,5 +27,4 @@ check.packages(packages)
 
 shiny::runApp("~/Uppsala University/HT 20/Degree Project/R/scRNA_visualizer/app/rna_app")
 
-#library(rsconnect)
-#deployApp("~/Uppsala University/HT 20/Degree Project/R/scRNA_visualizer/app/rna_app")
+#rsconnect::deployApp("~/Uppsala University/HT 20/Degree Project/R/scRNA_visualizer/app/rna_app")

@@ -13,6 +13,7 @@ observeEvent(input$vizExpDistrPlot,{
       return()
 
     color <- "Dark2"
+    manual_colour <- list()
     pointSize <- 1.5
     plotName_prefix <- paste0("Vln_",input$expDistrPlot.groupBy,"_")
     if(input$expDistrPlot.colourBy == "NULL") {
@@ -21,13 +22,15 @@ observeEvent(input$vizExpDistrPlot,{
       colourBy <- input$expDistrPlot.colourBy
       groups <- sce[[colourBy]]
       plotName_prefix <- paste0(plotName_prefix,colourBy,"_")
+      if(USE_MANUAL_COLOUR)
+        manual_colour <- anno_colour[[colourBy]]
     }
     
     plotList <- list()
     lapply(1:nrow(gene_list), function(i) {
       plotName <- paste0(plotName_prefix,gene_list[[COL_GENE_NAME]][i]) #,"_",gene_list[[COL_GENE_ID]][i])
-      plotList[[plotName]] <<- plotVln(input$expDistrPlot.groupBy,"Expression(logcounts)",sce[[input$expDistrPlot.groupBy]],
-                                unlist(exp.matrix[row.names(gene_list)[i],]),NULL,NULL,colourBy,groups,"",pointSize,color)
+      plotList[[plotName]] <<- plotVln(input$expDistrPlot.groupBy,LEGEND_EXPRESSION,sce[[input$expDistrPlot.groupBy]],
+                                unlist(exp.matrix[row.names(gene_list)[i],]),NULL,NULL,colourBy,groups,"",pointSize,color,manual_colour)
     })
     plotListExpDistr[[input$expDistrPlot.id]] <<- plotList
     

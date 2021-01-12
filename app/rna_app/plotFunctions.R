@@ -11,7 +11,7 @@ plotHisto <- function(xlab,xVar,xScale,title){
   return(g)
 }
 
-plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette) {
+plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette, manualColour = list()) {
   if(!is.null(Grp)){
     df <- data.frame(varY=yVar, varX=xVar, Group=as.factor(Grp))
   } else {
@@ -23,8 +23,9 @@ plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, p
     {if(!is.null(Grp))geom_point(size=pointSize, aes(colour = Group), position="jitter")}+
     {if(is.null(Grp))geom_point(size=pointSize, position="jitter")}+
     {if(!is.null(xScale))scale_x_continuous(trans = xScale)} + 
-    {if(!is.null(yScale))scale_y_continuous(trans = yScale)} + 
-    scale_color_brewer(palette=palette,name=Grlab) +
+    {if(!is.null(yScale))scale_y_continuous(trans = yScale)} +
+    {if(length(manualColour)==0) scale_color_brewer(palette=palette, name = Grlab)} +
+    {if(length(manualColour)>0) scale_colour_manual(name = Grlab, values = manualColour)} +
     theme_bw(base_size=15) +
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
     xlab(xlab) +
@@ -34,14 +35,15 @@ plotVln <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, p
   return(g)
 }
 
-plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette) {
+plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, title, pointSize, palette, manualColour = list()) {
   data <- data.frame(varY=yVar, varX=xVar, Group=as.factor(Grp))
   
   g <- ggplot(data, aes(x=varX, y=varY, colour=Group)) + 
     geom_point(size=pointSize) +
     {if(!is.null(xScale))scale_x_continuous(trans = xScale)} + 
-    {if(!is.null(yScale))scale_y_continuous(trans = yScale)} + 
-    scale_color_brewer(palette=palette, name = Grlab) +
+    {if(!is.null(yScale))scale_y_continuous(trans = yScale)} +
+    {if(length(manualColour)==0) scale_color_brewer(palette=palette, name = Grlab)} +
+    {if(length(manualColour)>0) scale_colour_manual(name = Grlab, values = manualColour)} +
     theme_bw(base_size=15) +
     xlab(xlab) +
     ylab(ylab) +
@@ -50,7 +52,7 @@ plotScatter <- function(xlab, ylab, xVar, yVar, xScale, yScale, Grlab, Grp, titl
   return(g)
 }
 
-plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grpLabel, xLab, yLab, point.size) {
+plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grpLabel, xLab, yLab, point.size, legendTitle) {
   if(!is.null(group)){
     df <- data.frame(coordinate.matrix, Exp = exp.matrix, Group = as.factor(group))
     g <- ggplot(df, aes(x = df[,1], y = df[,2], shape = Group))
@@ -69,13 +71,14 @@ plotScatterFeatures <- function(coordinate.matrix, exp.matrix, title, group, grp
     xlab(xLab) +
     ylab(yLab) +
     theme_bw(base_size=15) +
-    ggtitle(title)
+    ggtitle(title) +
+    labs(color=legendTitle)
   
   return(g)
 }
 
 #library(ComplexHeatmap)
-DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, cluster_gene_method, grp1Lab, grp2Lab) {
+DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, cluster_gene_method, grp1Lab, grp2Lab, annotation_color) {
   dat$N -> row.names(dat)
   # dat2 <- dat[order(dat$group1),]
   # expr1 <- expr[,row.names(dat2)]
@@ -94,7 +97,6 @@ DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, clust
   
   # make annotation for columns and rows
   anncol <- data.frame(Group1 = dat$group1, row.names=row.names(dat))
-  ann_color <- NA
   names(anncol)[1] <- grp1Lab
   if (length(dat$group2)>0){
     anncol[["Group2"]] = dat$group2
@@ -110,6 +112,6 @@ DrawHeatmap <- function (dat, annotation, expr, show, cluster_cell_method, clust
                   fontsize=13, show_rownames=T, scale="none", show_colnames=show,  
                   cluster_cols=cluster_cell, clustering_distance_cols=cluster_cell_method, 
                   cluster_rows=cluster_gene, clustering_distance_rows=cluster_gene_method,
-                  clustering_method="complete", border_color=FALSE, cellheight = 20)
+                  clustering_method="complete", border_color=FALSE, cellheight = 20, annotation_colors = annotation_color)
   return(out)
 }
