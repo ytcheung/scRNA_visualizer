@@ -15,6 +15,7 @@ library(grid)
 library(data.table)
 
 ui <- tagList(
+    tags$head(includeHTML(("google-analytics.html"))),
     dashboardPage(
         skin = "purple",
         dashboardHeader(title = "scRNA-seq Visualizer"),
@@ -31,7 +32,7 @@ ui <- tagList(
         ),
         dashboardBody(
             shinyjs::useShinyjs(),
-            extendShinyjs(script = "www/custom.js", functions=c()),
+            extendShinyjs(script = "custom.js", functions=c()),
             tags$head(
                 tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
                 tags$link(rel = "stylesheet", type = "text/css", href = "buttons.css")
